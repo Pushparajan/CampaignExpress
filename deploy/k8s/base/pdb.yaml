@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: campaign-express
+  namespace: campaign-express
+  labels:
+    app.kubernetes.io/name: campaign-express
+spec:
+  minAvailable: "80%"
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: campaign-express
+      app.kubernetes.io/component: bidding-engine

@@ -1,0 +1,29 @@
+[package]
+name = "campaign-api"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+campaign-core = { workspace = true }
+campaign-agents = { workspace = true }
+campaign-cache = { workspace = true }
+campaign-analytics = { workspace = true }
+campaign-npu = { workspace = true }
+axum = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+hyper = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+tokio-stream = { workspace = true }
+

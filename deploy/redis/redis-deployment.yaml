@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+  namespace: campaign-express
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: cache
+spec:
+  serviceName: redis-cluster
+  replicas: 6
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          command:
+            - redis-server
+          args:
+            - "--cluster-enabled=yes"
+            - "--cluster-config-file=/data/nodes.conf"
+            - "--cluster-node-timeout=5000"
+            - "--appendonly=yes"
+            - "--maxmemory=8gb"
+            - "--maxmemory-policy=allkeys-lru"
+            - "--save=60 10000"
+            - "--tcp-backlog=65535"
+            - "--timeout=0"
+            - "--tcp-keepalive=300"
+          ports:
+            - name: client
+              containerPort: 6379
+            - name: gossip
+              containerPort: 16379
+          resources:
+            requests:
+              cpu: "1"
+              memory: "8Gi"
+            limits:
+              cpu: "2"
+              memory: "10Gi"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster
+  namespace: campaign-express
+  labels:
+    app.kubernetes.io/name: redis
+spec:
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+    - name: client
+      port: 6379
+      targetPort: 6379
+---
+# Headless service for cluster discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-headless
+  namespace: campaign-express
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+    - name: client
+      port: 6379
+    - name: gossip
+      port: 16379
+---
+# Redis cluster initialization job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redis-cluster-init
+  namespace: campaign-express
+spec:
+  template:
+    spec:
+      containers:
+        - name: redis-init
+          image: redis:7-alpine
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Redis nodes to be ready..."
+              sleep 30
+              NODES=""
+              for i in $(seq 0 5); do
+                NODES="$NODES redis-cluster-$i.redis-cluster-headless.campaign-express.svc.cluster.local:6379"
+              done
+              echo "Creating Redis cluster with nodes: $NODES"
+              redis-cli --cluster create $NODES --cluster-replicas 1 --cluster-yes
+      restartPolicy: OnFailure
+  backoffLimit: 5

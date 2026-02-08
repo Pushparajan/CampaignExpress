@@ -1,0 +1,19 @@
+# Development Dockerfile with hot-reload support
+FROM rust:1.77-bookworm
+
+RUN apt-get update && apt-get install -y \
+    protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN cargo install cargo-watch
+
+WORKDIR /app
+
+COPY . .
+
+ENV RUST_LOG=campaign_express=debug \
+    CAMPAIGN_EXPRESS__NPU__DEVICE=cpu
+
+EXPOSE 8080 9090 9091
+
+CMD ["cargo", "watch", "-x", "run --bin campaign-express -- --api-only"]

@@ -1,0 +1,119 @@
+version: "3.9"
+
+services:
+  # Campaign Express application
+  campaign-express:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+      - "9091:9091"
+    environment:
+      - CAMPAIGN_EXPRESS__NODE_ID=local-node-01
+      - CAMPAIGN_EXPRESS__AGENTS_PER_NODE=4
+      - CAMPAIGN_EXPRESS__NATS__URLS=nats://nats:4222
+      - CAMPAIGN_EXPRESS__REDIS__URLS=redis://redis:6379
+      - CAMPAIGN_EXPRESS__CLICKHOUSE__URL=http://clickhouse:8123
+      - CAMPAIGN_EXPRESS__NPU__DEVICE=cpu
+      - RUST_LOG=campaign_express=debug
+    depends_on:
+      nats:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    networks:
+      - campaign-net
+    restart: unless-stopped
+
+  # NATS with JetStream
+  nats:
+    image: nats:2.10-alpine
+    command: ["--jetstream", "--store_dir", "/data", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - campaign-net
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "2gb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - campaign-net
+
+  # ClickHouse
+  clickhouse:
+    image: clickhouse/clickhouse-server:24-alpine
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=campaign_express
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - campaign-net
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    ports:
+      - "9092:9090"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - campaign-net
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:10.3.3
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=campaign-express
+      - GF_SECURITY_ADMIN_USER=admin
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - campaign-net
+
+volumes:
+  nats-data:
+  redis-data:
+  clickhouse-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  campaign-net:
+    driver: bridge

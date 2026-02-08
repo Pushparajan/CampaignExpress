@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: campaign-express
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+        - name: campaign-express
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          env:
+            - name: CAMPAIGN_EXPRESS__NPU__DEVICE
+              value: "cpu"
+            - name: CAMPAIGN_EXPRESS__AGENTS_PER_NODE
+              value: "4"
+            - name: RUST_LOG
+              value: "campaign_express=debug"

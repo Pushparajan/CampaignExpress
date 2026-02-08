@@ -1,0 +1,15 @@
+[package]
+name = "campaign-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+config = { workspace = true }
+tracing = { workspace = true }
+ndarray = { workspace = true }

@@ -1,0 +1,58 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+  scrape_timeout: 5s
+
+scrape_configs:
+  # Campaign Express pods
+  - job_name: "campaign-express"
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - campaign-express
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: "true"
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        target_label: __address__
+        regex: (.+)
+        replacement: ${1}
+      - source_labels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        target_label: __address__
+        regex: (.+);(.+)
+        replacement: $1:$2
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+
+  # NATS monitoring
+  - job_name: "nats"
+    static_configs:
+      - targets: ["nats.campaign-express.svc.cluster.local:8222"]
+
+  # Redis
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis-exporter.campaign-express.svc.cluster.local:9121"]
+
+  # HAProxy
+  - job_name: "haproxy"
+    static_configs:
+      - targets: ["haproxy-ingress.campaign-express.svc.cluster.local:8404"]
+
+  # ClickHouse
+  - job_name: "clickhouse"
+    static_configs:
+      - targets: ["clickhouse.campaign-express.svc.cluster.local:9363"]
+
+  # Local development fallback
+  - job_name: "campaign-express-local"
+    static_configs:
+      - targets: ["campaign-express:9091"]

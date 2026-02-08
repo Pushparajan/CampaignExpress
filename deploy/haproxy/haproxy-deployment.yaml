@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haproxy-ingress
+  namespace: campaign-express
+  labels:
+    app.kubernetes.io/name: haproxy
+    app.kubernetes.io/component: ingress
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: haproxy
+      app.kubernetes.io/component: ingress
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: haproxy
+        app.kubernetes.io/component: ingress
+    spec:
+      containers:
+        - name: haproxy
+          image: haproxy:2.9-alpine
+          ports:
+            - name: http
+              containerPort: 80
+            - name: https
+              containerPort: 443
+            - name: grpc
+              containerPort: 9090
+            - name: stats
+              containerPort: 8404
+          volumeMounts:
+            - name: config
+              mountPath: /usr/local/etc/haproxy/haproxy.cfg
+              subPath: haproxy.cfg
+              readOnly: true
+          resources:
+            requests:
+              cpu: "1"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "1Gi"
+          livenessProbe:
+            httpGet:
+              path: /stats
+              port: 8404
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /stats
+              port: 8404
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: haproxy-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haproxy-config
+  namespace: campaign-express
+data:
+  haproxy.cfg: |
+    # Loaded from ConfigMap — see deploy/haproxy/haproxy.cfg for full version
+    global
+        maxconn 100000
+        nbthread 4
+    defaults
+        mode http
+        timeout connect 2s
+        timeout client 5s
+        timeout server 5s
+    frontend ft_http
+        bind *:80
+        default_backend bk_campaign_express
+    backend bk_campaign_express
+        balance leastconn
+        option httpchk GET /ready
+        server-template ce 20 campaign-express-headless.campaign-express.svc.cluster.local:8080 check resolvers dns init-addr none
+    resolvers dns
+        nameserver kube-dns 10.96.0.10:53
+        resolve_retries 3
+        timeout resolve 1s
+        timeout retry 1s
+        hold valid 5s
+    frontend stats
+        bind *:8404
+        stats enable
+        stats uri /stats
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy-ingress
+  namespace: campaign-express
+  labels:
+    app.kubernetes.io/name: haproxy
+    app.kubernetes.io/component: ingress
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: haproxy
+    app.kubernetes.io/component: ingress
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443
+    - name: grpc
+      port: 9090
+      targetPort: 9090

@@ -1,0 +1,139 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Bid Requests / Second",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(bids_requests_total[1m])",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "title": "Bid Response Latency (p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, rate(bids_total_latency_us_bucket[5m]))",
+          "legendFormat": "p99"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(bids_total_latency_us_bucket[5m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(bids_total_latency_us_bucket[5m]))",
+          "legendFormat": "p50"
+        }
+      ]
+    },
+    {
+      "title": "Inference Latency (us)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, rate(inference_latency_us_bucket[5m]))",
+          "legendFormat": "p99"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(inference_latency_us_bucket[5m]))",
+          "legendFormat": "p50"
+        }
+      ]
+    },
+    {
+      "title": "Cache Hit Rate",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(cache_l1_hit_total[5m])) / (sum(rate(cache_l1_hit_total[5m])) + sum(rate(cache_l1_miss_total[5m])))",
+          "legendFormat": "L1 Hit Rate"
+        },
+        {
+          "expr": "(sum(rate(cache_l1_hit_total[5m])) + sum(rate(cache_l2_hit_total[5m]))) / (sum(rate(cache_l1_hit_total[5m])) + sum(rate(cache_l1_miss_total[5m])))",
+          "legendFormat": "Combined Hit Rate"
+        }
+      ]
+    },
+    {
+      "title": "Active Pods",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "count(up{job=\"campaign-express\"} == 1)"
+        }
+      ]
+    },
+    {
+      "title": "Total Throughput",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(rate(bids_requests_total[1m])) * 3600",
+          "legendFormat": "offers/hour"
+        }
+      ]
+    },
+    {
+      "title": "No-Bid Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(rate(bids_no_bid_total[5m])) / sum(rate(bids_requests_total[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "Error Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(rate(api_errors_total[5m])) / sum(rate(bids_requests_total[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "Analytics Events Queued vs Flushed",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum(rate(analytics_queued_total[1m]))",
+          "legendFormat": "Queued"
+        },
+        {
+          "expr": "sum(rate(analytics_flushed_total[1m]))",
+          "legendFormat": "Flushed"
+        },
+        {
+          "expr": "sum(rate(analytics_dropped_total[1m]))",
+          "legendFormat": "Dropped"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["campaign-express", "ad-tech"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Campaign Express - Bid Engine",
+  "uid": "campaign-express-main",
+  "version": 1
+}

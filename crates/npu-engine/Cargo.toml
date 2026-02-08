@@ -1,0 +1,15 @@
+[package]
+name = "campaign-npu"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+campaign-core = { workspace = true }
+ndarray = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+parking_lot = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

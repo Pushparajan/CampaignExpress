@@ -1,0 +1,89 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/npu-engine",
+    "crates/agents",
+    "crates/cache",
+    "crates/analytics",
+    "crates/api-server",
+    "crates/wasm-edge",
+    "src/campaign-express",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/Pushparajan/CampaignExpress"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.36", features = ["full"] }
+tokio-stream = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# HTTP / gRPC
+axum = { version = "0.7", features = ["macros"] }
+tonic = "0.12"
+tonic-build = "0.12"
+prost = "0.13"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip"] }
+hyper = { version = "1.0", features = ["full"] }
+
+# NATS
+async-nats = "0.35"
+
+# Redis
+redis = { version = "0.25", features = ["tokio-comp", "cluster-async", "connection-manager"] }
+
+# ClickHouse
+clickhouse = { version = "0.11", features = ["time"] }
+
+# Metrics / tracing
+prometheus = "0.13"
+metrics = "0.23"
+metrics-exporter-prometheus = "0.15"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+opentelemetry = "0.24"
+
+# ML inference
+ndarray = "0.15"
+
+# Utilities
+anyhow = "1.0"
+thiserror = "1.0"
+uuid = { version = "1.7", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+config = "0.14"
+clap = { version = "4.5", features = ["derive", "env"] }
+rand = "0.8"
+dashmap = "5.5"
+parking_lot = "0.12"
+bytes = "1.5"
+base64 = "0.22"
+url = "2.5"
+
+# Internal crates
+campaign-core = { path = "crates/core" }
+campaign-npu = { path = "crates/npu-engine" }
+campaign-agents = { path = "crates/agents" }
+campaign-cache = { path = "crates/cache" }
+campaign-analytics = { path = "crates/analytics" }
+campaign-api = { path = "crates/api-server" }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.bench]
+inherits = "release"
+debug = true

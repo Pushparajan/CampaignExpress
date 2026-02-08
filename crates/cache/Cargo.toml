@@ -1,0 +1,16 @@
+[package]
+name = "campaign-cache"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+campaign-core = { workspace = true }
+redis = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+metrics = { workspace = true }
+dashmap = { workspace = true }

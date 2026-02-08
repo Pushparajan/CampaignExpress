@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: campaign-express
+  labels:
+    app.kubernetes.io/name: campaign-express
+    app.kubernetes.io/part-of: campaign-express

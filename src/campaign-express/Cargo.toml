@@ -1,0 +1,23 @@
+[package]
+name = "campaign-express"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "campaign-express"
+path = "src/main.rs"
+
+[dependencies]
+campaign-core = { workspace = true }
+campaign-npu = { workspace = true }
+campaign-agents = { workspace = true }
+campaign-cache = { workspace = true }
+campaign-analytics = { workspace = true }
+campaign-api = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+config = { workspace = true }

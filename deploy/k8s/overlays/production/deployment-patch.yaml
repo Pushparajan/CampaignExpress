@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: campaign-express
+  namespace: campaign-express
+spec:
+  replicas: 20
+  template:
+    spec:
+      containers:
+        - name: campaign-express
+          resources:
+            requests:
+              cpu: "4"
+              memory: "8Gi"
+            limits:
+              cpu: "8"
+              memory: "16Gi"
+              # AMD XDNA NPU resource
+              # amd.com/xdna: "1"
+          env:
+            - name: CAMPAIGN_EXPRESS__NPU__DEVICE
+              value: "xdna"
+            - name: CAMPAIGN_EXPRESS__AGENTS_PER_NODE
+              value: "20"
+            - name: RUST_LOG
+              value: "campaign_express=info"
+      tolerations:
+        - key: "amd.com/xdna"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        node.kubernetes.io/npu: "xdna"

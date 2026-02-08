@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package campaign.bidding.v1;
+
+service BiddingService {
+  // Process a single OpenRTB bid request
+  rpc ProcessBid(BidRequestProto) returns (BidResponseProto);
+
+  // Health check
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+
+  // Stream bid requests for high-throughput scenarios
+  rpc StreamBids(stream BidRequestProto) returns (stream BidResponseProto);
+}
+
+message BidRequestProto {
+  // JSON-encoded OpenRTB bid request
+  string openrtb_json = 1;
+
+  // Optional: pre-parsed fields for efficiency
+  string request_id = 2;
+  string user_id = 3;
+  uint32 timeout_ms = 4;
+}
+
+message BidResponseProto {
+  // JSON-encoded OpenRTB bid response
+  string openrtb_json = 1;
+
+  string request_id = 2;
+  bool has_bid = 3;
+  uint64 processing_time_us = 4;
+  string agent_id = 5;
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+  }
+  ServingStatus status = 1;
+  string node_id = 2;
+  uint32 active_agents = 3;
+  uint64 uptime_secs = 4;
+}
