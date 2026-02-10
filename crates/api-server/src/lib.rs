@@ -1,4 +1,7 @@
+pub mod channel_rest;
+pub mod dsp_rest;
 pub mod grpc;
+pub mod loyalty_rest;
 pub mod rest;
 pub mod server;
 

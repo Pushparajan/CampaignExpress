@@ -53,6 +53,13 @@ impl NpuEngine {
 
     /// Build a feature matrix from user profile and offer IDs.
     /// Each row is a feature vector for one user-offer pair.
+    ///
+    /// Layout (256 dims):
+    ///   [0..64)   — user interests
+    ///   [64..128) — segment one-hot encoding
+    ///   [128..136) — loyalty features (tier, balance, progress, earn_rate, etc.)
+    ///   [136..140) — context (recency, freq_cap, device, offer_position)
+    ///   [140..256) — reserved / zero-padded for future features
     fn build_features(
         &self,
         profile: &UserProfile,
@@ -62,44 +69,56 @@ impl NpuEngine {
         let batch_size = offer_ids.len();
         let mut features = Array2::<f32>::zeros((batch_size, input_dim));
 
+        // Pre-compute loyalty features (shared across all offers for this user)
+        let loyalty_vec = profile
+            .loyalty
+            .as_ref()
+            .map(|lp| lp.as_feature_vector())
+            .unwrap_or([0.0; 8]);
+
         for (i, _offer_id) in offer_ids.iter().enumerate() {
             let mut row = features.row_mut(i);
 
-            // Encode user interests (first N features)
+            // [0..64) — user interests
             for (j, &interest) in profile.interests.iter().enumerate() {
-                if j >= input_dim / 2 {
+                if j >= 64 {
                     break;
                 }
                 row[j] = interest;
             }
 
-            // Encode user segments as one-hot-ish features
+            // [64..128) — segment one-hot encoding
             for &seg in &profile.segments {
-                let idx = (input_dim / 2) + (seg as usize % (input_dim / 4));
-                if idx < input_dim {
-                    row[idx] = 1.0;
+                let idx = 64 + (seg as usize % 64);
+                row[idx] = 1.0;
+            }
+
+            // [128..136) — loyalty features
+            for (j, &val) in loyalty_vec.iter().enumerate() {
+                if 128 + j < input_dim {
+                    row[128 + j] = val;
                 }
             }
 
-            // Encode recency
-            if input_dim > 4 {
-                row[input_dim - 4] = profile.recency_score;
+            // [136] — recency score
+            if input_dim > 136 {
+                row[136] = profile.recency_score;
             }
 
-            // Encode frequency cap utilization
-            if input_dim > 3 {
+            // [137] — frequency cap utilization
+            if input_dim > 137 {
                 let freq_util = if profile.frequency_cap.max_per_hour > 0 {
                     profile.frequency_cap.impressions_1h as f32
                         / profile.frequency_cap.max_per_hour as f32
                 } else {
                     0.0
                 };
-                row[input_dim - 3] = freq_util;
+                row[137] = freq_util;
             }
 
-            // Encode device type
-            if input_dim > 2 {
-                row[input_dim - 2] = match profile.device_type {
+            // [138] — device type
+            if input_dim > 138 {
+                row[138] = match profile.device_type {
                     Some(campaign_core::types::DeviceType::Desktop) => 0.0,
                     Some(campaign_core::types::DeviceType::Mobile) => 1.0,
                     Some(campaign_core::types::DeviceType::Tablet) => 0.5,
@@ -108,9 +127,9 @@ impl NpuEngine {
                 };
             }
 
-            // Offer index encoding (simple positional)
-            if input_dim > 1 {
-                row[input_dim - 1] = i as f32 / batch_size.max(1) as f32;
+            // [139] — offer positional encoding
+            if input_dim > 139 {
+                row[139] = i as f32 / batch_size.max(1) as f32;
             }
         }
 

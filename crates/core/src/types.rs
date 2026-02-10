@@ -1,3 +1,4 @@
+use crate::loyalty::LoyaltyProfile;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -13,6 +14,9 @@ pub struct UserProfile {
     pub recency_score: f32,
     pub frequency_cap: FrequencyCap,
     pub last_seen: DateTime<Utc>,
+    /// Loyalty program state (tier, stars, rewards).
+    #[serde(default)]
+    pub loyalty: Option<LoyaltyProfile>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,6 +105,25 @@ pub enum EventType {
     NoBid,
     Timeout,
     Error,
+    // Loyalty events
+    LoyaltyEarn,
+    LoyaltyRedeem,
+    LoyaltyTierUp,
+    LoyaltyTierDown,
+    LoyaltyOfferServed,
+    LoyaltyOfferClicked,
+    LoyaltyOfferRedeemed,
+    // DSP events
+    DspBidSent,
+    DspBidWon,
+    DspBidLost,
+    DspBidTimeout,
+    // Omnichannel ingest events
+    ChannelIngest,
+    // Activation events
+    ActivationSent,
+    ActivationDelivered,
+    ActivationFailed,
 }
 
 /// Internal message envelope for NATS inter-agent communication.
@@ -145,6 +168,7 @@ impl Default for UserProfile {
             recency_score: 0.0,
             frequency_cap: FrequencyCap::default(),
             last_seen: Utc::now(),
+            loyalty: None,
         }
     }
 }

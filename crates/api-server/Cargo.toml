@@ -9,6 +9,9 @@ campaign-agents = { workspace = true }
 campaign-cache = { workspace = true }
 campaign-analytics = { workspace = true }
 campaign-npu = { workspace = true }
+campaign-loyalty = { workspace = true }
+campaign-dsp = { workspace = true }
+campaign-channels = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }

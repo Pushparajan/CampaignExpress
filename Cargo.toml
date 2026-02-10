@@ -8,6 +8,9 @@ members = [
     "crates/analytics",
     "crates/api-server",
     "crates/wasm-edge",
+    "crates/loyalty",
+    "crates/dsp",
+    "crates/channels",
     "src/campaign-express",
 ]
 
@@ -76,6 +79,9 @@ campaign-agents = { path = "crates/agents" }
 campaign-cache = { path = "crates/cache" }
 campaign-analytics = { path = "crates/analytics" }
 campaign-api = { path = "crates/api-server" }
+campaign-loyalty = { path = "crates/loyalty" }
+campaign-dsp = { path = "crates/dsp" }
+campaign-channels = { path = "crates/channels" }
 
 [profile.release]
 opt-level = 3

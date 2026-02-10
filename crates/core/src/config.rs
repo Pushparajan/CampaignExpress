@@ -20,6 +20,10 @@ pub struct AppConfig {
     pub npu: NpuConfig,
     #[serde(default)]
     pub metrics: MetricsConfig,
+    #[serde(default)]
+    pub loyalty: LoyaltyConfig,
+    #[serde(default)]
+    pub dsp: DspIntegrationConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -233,6 +237,68 @@ impl Default for AppConfig {
             clickhouse: ClickHouseConfig::default(),
             npu: NpuConfig::default(),
             metrics: MetricsConfig::default(),
+            loyalty: LoyaltyConfig::default(),
+            dsp: DspIntegrationConfig::default(),
+        }
+    }
+}
+
+// ─── Loyalty Config ─────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LoyaltyConfig {
+    #[serde(default = "default_loyalty_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_star_expiry_days")]
+    pub star_expiry_days: u32,
+    #[serde(default = "default_gold_threshold")]
+    pub gold_threshold: u32,
+    #[serde(default = "default_reserve_threshold")]
+    pub reserve_threshold: u32,
+    #[serde(default = "default_qualifying_period_months")]
+    pub qualifying_period_months: u32,
+}
+
+fn default_loyalty_enabled() -> bool { true }
+fn default_star_expiry_days() -> u32 { 180 }
+fn default_gold_threshold() -> u32 { 500 }
+fn default_reserve_threshold() -> u32 { 2500 }
+fn default_qualifying_period_months() -> u32 { 12 }
+
+impl Default for LoyaltyConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_loyalty_enabled(),
+            star_expiry_days: default_star_expiry_days(),
+            gold_threshold: default_gold_threshold(),
+            reserve_threshold: default_reserve_threshold(),
+            qualifying_period_months: default_qualifying_period_months(),
+        }
+    }
+}
+
+// ─── DSP Integration Config ─────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DspIntegrationConfig {
+    #[serde(default = "default_dsp_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_dsp_timeout_ms")]
+    pub default_timeout_ms: u64,
+    #[serde(default = "default_dsp_max_concurrent")]
+    pub max_concurrent_requests: usize,
+}
+
+fn default_dsp_enabled() -> bool { false }
+fn default_dsp_timeout_ms() -> u64 { 200 }
+fn default_dsp_max_concurrent() -> usize { 1000 }
+
+impl Default for DspIntegrationConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_dsp_enabled(),
+            default_timeout_ms: default_dsp_timeout_ms(),
+            max_concurrent_requests: default_dsp_max_concurrent(),
         }
     }
 }

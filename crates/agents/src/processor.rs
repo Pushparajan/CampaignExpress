@@ -3,6 +3,7 @@
 
 use campaign_analytics::AnalyticsLogger;
 use campaign_cache::RedisCache;
+use campaign_core::loyalty::LoyaltyTier;
 use campaign_core::openrtb::{Bid, BidRequest, BidResponse, SeatBid};
 use campaign_core::types::{BidDecision, EventType};
 use campaign_npu::NpuEngine;
@@ -96,12 +97,25 @@ impl BidProcessor {
             .map(|i| format!("offer-{:04}", i))
             .collect();
 
-        // Run NPU inference to score offers
+        // Run NPU inference to score offers (loyalty features are baked into the feature vector)
         let inference_start = std::time::Instant::now();
-        let results = self.npu.score_offers(&profile, &offer_ids)?;
+        let mut results = self.npu.score_offers(&profile, &offer_ids)?;
         let inference_latency_us = inference_start.elapsed().as_micros() as u64;
 
         metrics::histogram!("inference.latency_us").record(inference_latency_us as f64);
+
+        // Apply loyalty tier bid boost: higher tiers get higher bid willingness
+        let tier_boost = match profile.loyalty.as_ref().map(|l| l.tier) {
+            Some(LoyaltyTier::Reserve) => 1.3,
+            Some(LoyaltyTier::Gold) => 1.15,
+            _ => 1.0,
+        };
+        if tier_boost > 1.0 {
+            for r in &mut results {
+                r.recommended_bid *= tier_boost;
+            }
+            metrics::counter!("bids.loyalty_boosted").increment(1);
+        }
 
         // Select the winning offer (highest score above bid floor)
         let mut seat_bids = Vec::new();

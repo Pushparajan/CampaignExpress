@@ -38,7 +38,10 @@ impl CoLaNetModel {
     /// Falls back to synthetic weights if no model file is found.
     pub fn load(model_path: &str, device: &str, _num_threads: usize) -> anyhow::Result<Self> {
         let path = Path::new(model_path);
-        let input_dim = 128;
+        // Expanded for loyalty-aware inference:
+        // 64 interests + 64 segments + 8 loyalty features + 4 context = 140
+        // Padded to 256 for NPU SIMD alignment
+        let input_dim = 256;
         let output_dim = 64;
 
         if device == "xdna" {
