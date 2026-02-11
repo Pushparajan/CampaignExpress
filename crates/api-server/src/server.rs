@@ -18,6 +18,7 @@ use std::time::Instant;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
+use axum::middleware;
 use tracing::info;
 
 /// Main API server managing both REST and gRPC endpoints.
@@ -117,12 +118,17 @@ impl ApiServer {
             .route("/v1/channels/email/analytics", get(channel_rest::handle_all_email_analytics))
             .with_state(channel_state);
 
+        // Management UI routes (with auth middleware)
+        let mgmt_routes = campaign_management::management_router()
+            .layer(middleware::from_fn(campaign_management::auth::auth_middleware));
+
         let app = Router::new()
             .merge(bid_routes)
             .merge(ops_routes)
             .merge(loyalty_routes)
             .merge(dsp_routes)
             .merge(channel_routes)
+            .merge(mgmt_routes)
             .layer(CompressionLayer::new())
             .layer(CorsLayer::permissive())
             .layer(TraceLayer::new_for_http());

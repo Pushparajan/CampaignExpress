@@ -24,6 +24,12 @@ pub struct AppConfig {
     pub loyalty: LoyaltyConfig,
     #[serde(default)]
     pub dsp: DspIntegrationConfig,
+    #[serde(default)]
+    pub journey: JourneyConfig,
+    #[serde(default)]
+    pub dco: DcoConfig,
+    #[serde(default)]
+    pub cdp: CdpGlobalConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -239,6 +245,9 @@ impl Default for AppConfig {
             metrics: MetricsConfig::default(),
             loyalty: LoyaltyConfig::default(),
             dsp: DspIntegrationConfig::default(),
+            journey: JourneyConfig::default(),
+            dco: DcoConfig::default(),
+            cdp: CdpGlobalConfig::default(),
         }
     }
 }
@@ -299,6 +308,85 @@ impl Default for DspIntegrationConfig {
             enabled: default_dsp_enabled(),
             default_timeout_ms: default_dsp_timeout_ms(),
             max_concurrent_requests: default_dsp_max_concurrent(),
+        }
+    }
+}
+
+// ─── Journey Config ─────────────────────────────────────────────────────
+#[derive(Debug, Clone, Deserialize)]
+pub struct JourneyConfig {
+    #[serde(default = "default_journey_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_max_active_journeys")]
+    pub max_active_journeys: usize,
+    #[serde(default = "default_max_instances_per_journey")]
+    pub max_instances_per_journey: usize,
+    #[serde(default = "default_evaluation_interval_ms")]
+    pub evaluation_interval_ms: u64,
+}
+
+fn default_journey_enabled() -> bool { true }
+fn default_max_active_journeys() -> usize { 100 }
+fn default_max_instances_per_journey() -> usize { 1_000_000 }
+fn default_evaluation_interval_ms() -> u64 { 100 }
+
+impl Default for JourneyConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_journey_enabled(),
+            max_active_journeys: default_max_active_journeys(),
+            max_instances_per_journey: default_max_instances_per_journey(),
+            evaluation_interval_ms: default_evaluation_interval_ms(),
+        }
+    }
+}
+
+// ─── DCO Config ─────────────────────────────────────────────────────────
+#[derive(Debug, Clone, Deserialize)]
+pub struct DcoConfig {
+    #[serde(default = "default_dco_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_max_combinations")]
+    pub max_combinations: usize,
+    #[serde(default = "default_exploration_rate")]
+    pub exploration_rate: f64,
+}
+
+fn default_dco_enabled() -> bool { true }
+fn default_max_combinations() -> usize { 1000 }
+fn default_exploration_rate() -> f64 { 0.1 }
+
+impl Default for DcoConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_dco_enabled(),
+            max_combinations: default_max_combinations(),
+            exploration_rate: default_exploration_rate(),
+        }
+    }
+}
+
+// ─── CDP Global Config ──────────────────────────────────────────────────
+#[derive(Debug, Clone, Deserialize)]
+pub struct CdpGlobalConfig {
+    #[serde(default = "default_cdp_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_sync_interval_secs")]
+    pub default_sync_interval_secs: u64,
+    #[serde(default = "default_webhook_secret")]
+    pub webhook_secret: String,
+}
+
+fn default_cdp_enabled() -> bool { false }
+fn default_sync_interval_secs() -> u64 { 300 }
+fn default_webhook_secret() -> String { "cdp-webhook-secret".to_string() }
+
+impl Default for CdpGlobalConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_cdp_enabled(),
+            default_sync_interval_secs: default_sync_interval_secs(),
+            webhook_secret: default_webhook_secret(),
         }
     }
 }

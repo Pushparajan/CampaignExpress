@@ -12,6 +12,7 @@ campaign-npu = { workspace = true }
 campaign-loyalty = { workspace = true }
 campaign-dsp = { workspace = true }
 campaign-channels = { workspace = true }
+campaign-management = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }

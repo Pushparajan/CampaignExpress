@@ -1,0 +1,17 @@
+[package]
+name = "campaign-dco"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+campaign-core = { workspace = true }
+ndarray = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+dashmap = { workspace = true }
+rand = { workspace = true }

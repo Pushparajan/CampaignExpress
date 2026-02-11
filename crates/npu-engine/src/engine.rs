@@ -1,7 +1,7 @@
 //! NPU inference engine — manages model lifecycle, batching, and
 //! provides the high-level inference API used by agents.
 
-use crate::model::CoLaNetModel;
+use crate::model::{CoLaNetModel, MultiHeadResult};
 use campaign_core::config::NpuConfig;
 use campaign_core::types::{InferenceResult, UserProfile};
 use ndarray::Array2;
@@ -134,6 +134,27 @@ impl NpuEngine {
         }
 
         features
+    }
+
+    /// Multi-head scoring: score offers AND creative variants in a single pass.
+    /// Used when DCO is enabled to select the best creative variant per offer.
+    pub fn score_offers_with_variants(
+        &self,
+        profile: &UserProfile,
+        offer_ids: &[String],
+        num_variants: usize,
+    ) -> anyhow::Result<MultiHeadResult> {
+        let input_dim = self.model.read().input_dim();
+
+        debug!(
+            batch_size = offer_ids.len(),
+            num_variants = num_variants,
+            "Multi-head inference (offers + DCO variants)"
+        );
+
+        let features = self.build_features(profile, offer_ids, input_dim);
+        let model = self.model.read();
+        model.infer_multi_head(&features, offer_ids, num_variants)
     }
 
     /// Hot-reload a new model version without downtime.

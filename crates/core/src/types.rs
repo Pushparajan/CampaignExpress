@@ -124,6 +124,27 @@ pub enum EventType {
     ActivationSent,
     ActivationDelivered,
     ActivationFailed,
+    // Journey events
+    JourneyEntered,
+    JourneyStepCompleted,
+    JourneyCompleted,
+    JourneyExited,
+    JourneySuppressedBid,
+    // DCO events
+    DcoAssembly,
+    DcoImpression,
+    DcoClick,
+    DcoConversion,
+    // CDP events
+    CdpSyncInbound,
+    CdpSyncOutbound,
+    CdpWebhook,
+    // Experimentation events
+    ExperimentAssignment,
+    ExperimentConversion,
+    // Template events
+    TemplateRendered,
+    TemplateDelivered,
 }
 
 /// Internal message envelope for NATS inter-agent communication.
@@ -171,4 +192,190 @@ impl Default for UserProfile {
             loyalty: None,
         }
     }
+}
+
+// ─── Journey Events ─────────────────────────────────────────────────────
+/// Extended event types for journey orchestration
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum JourneyEventType {
+    JourneyEntered,
+    StepCompleted,
+    JourneyCompleted,
+    JourneyExited,
+    JourneyError,
+    SuppressedBid,
+}
+
+// ─── Unified Profile Extensions ────────────────────────────────────────
+/// Consent flags for GDPR/CCPA compliance
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ConsentFlags {
+    pub gdpr_consent: bool,
+    pub ccpa_opt_out: bool,
+    pub email_opt_in: bool,
+    pub push_opt_in: bool,
+    pub sms_opt_in: bool,
+    pub personalization_consent: bool,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+/// Dynamic user segment with RFM-based criteria
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DynamicSegment {
+    pub id: u32,
+    pub name: String,
+    pub criteria: SegmentCriteria,
+    pub user_count: u64,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SegmentCriteria {
+    pub min_recency_days: Option<u32>,
+    pub max_recency_days: Option<u32>,
+    pub min_frequency: Option<u32>,
+    pub max_frequency: Option<u32>,
+    pub min_monetary: Option<f64>,
+    pub max_monetary: Option<f64>,
+    pub required_events: Vec<String>,
+    pub excluded_events: Vec<String>,
+    pub loyalty_tiers: Vec<String>,
+}
+
+impl Default for SegmentCriteria {
+    fn default() -> Self {
+        Self {
+            min_recency_days: None,
+            max_recency_days: None,
+            min_frequency: None,
+            max_frequency: None,
+            min_monetary: None,
+            max_monetary: None,
+            required_events: Vec::new(),
+            excluded_events: Vec::new(),
+            loyalty_tiers: Vec::new(),
+        }
+    }
+}
+
+// ─── Experimentation ────────────────────────────────────────────────────
+/// A/B/n experiment definition
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Experiment {
+    pub id: Uuid,
+    pub name: String,
+    pub description: String,
+    pub status: ExperimentStatus,
+    pub variants: Vec<ExperimentVariant>,
+    pub traffic_allocation: f64,
+    pub metric: String,
+    pub min_sample_size: u64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ExperimentStatus {
+    Draft,
+    Running,
+    Paused,
+    Completed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExperimentVariant {
+    pub id: Uuid,
+    pub name: String,
+    pub weight: f64,
+    pub is_control: bool,
+    pub config: serde_json::Value,
+    pub results: VariantResults,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct VariantResults {
+    pub sample_size: u64,
+    pub conversions: u64,
+    pub revenue: f64,
+    pub conversion_rate: f64,
+    pub confidence: f64,
+    pub lift: f64,
+}
+
+// ─── Attribution ────────────────────────────────────────────────────────
+/// Cross-channel attribution touchpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AttributionTouchpoint {
+    pub id: Uuid,
+    pub user_id: String,
+    pub channel: String,
+    pub campaign_id: Option<String>,
+    pub journey_id: Option<Uuid>,
+    pub creative_id: Option<Uuid>,
+    pub event_type: String,
+    pub revenue: f64,
+    pub timestamp: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AttributionModel {
+    LastTouch,
+    FirstTouch,
+    Linear,
+    TimeDecay,
+    PositionBased,
+    DataDriven,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AttributionResult {
+    pub conversion_id: Uuid,
+    pub user_id: String,
+    pub model: AttributionModel,
+    pub touchpoints: Vec<AttributionCredit>,
+    pub total_revenue: f64,
+    pub computed_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AttributionCredit {
+    pub touchpoint_id: Uuid,
+    pub channel: String,
+    pub credit: f64,
+    pub revenue_attributed: f64,
+}
+
+// ─── Template Management ────────────────────────────────────────────────
+/// Message template for owned channels
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageTemplate {
+    pub id: Uuid,
+    pub name: String,
+    pub channel: String,
+    pub subject: Option<String>,
+    pub body_template: String,
+    pub variables: Vec<TemplateVariable>,
+    pub status: TemplateStatus,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TemplateVariable {
+    pub name: String,
+    pub var_type: String,
+    pub default_value: Option<String>,
+    pub required: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TemplateStatus {
+    Draft,
+    Active,
+    Archived,
 }
