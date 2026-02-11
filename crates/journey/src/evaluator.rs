@@ -100,11 +100,7 @@ impl JourneyEvaluator {
 
     /// Picks the first matching transition from `next_steps`, falling back to
     /// the first unconditional transition.
-    fn resolve_next_step(
-        &self,
-        step: &JourneyStep,
-        context: &serde_json::Value,
-    ) -> Option<Uuid> {
+    fn resolve_next_step(&self, step: &JourneyStep, context: &serde_json::Value) -> Option<Uuid> {
         for transition in &step.next_steps {
             match &transition.condition {
                 Some(cond) => {
@@ -162,7 +158,11 @@ impl JourneyEvaluator {
                 config
                     .variants
                     .iter()
-                    .max_by(|a, b| a.weight.partial_cmp(&b.weight).unwrap_or(std::cmp::Ordering::Equal))
+                    .max_by(|a, b| {
+                        a.weight
+                            .partial_cmp(&b.weight)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    })
                     .unwrap()
             }
         };

@@ -144,8 +144,7 @@ impl LoyaltyProfile {
 
     /// Days since last redemption (for SNN recency signal).
     pub fn days_since_redeem(&self) -> Option<i64> {
-        self.last_redeem
-            .map(|r| (Utc::now() - r).num_days())
+        self.last_redeem.map(|r| (Utc::now() - r).num_days())
     }
 
     /// Encode loyalty state as feature vector components for SNN input.
@@ -157,7 +156,11 @@ impl LoyaltyProfile {
             .days_since_redeem()
             .map(|d| 1.0 / (1.0 + d as f32 / 30.0))
             .unwrap_or(0.0);
-        let birthday_eligible = if self.is_birthday_eligible() { 1.0 } else { 0.0 };
+        let birthday_eligible = if self.is_birthday_eligible() {
+            1.0
+        } else {
+            0.0
+        };
         let channel = match self.preferred_channel {
             Some(LoyaltyChannel::InStore) => 0.0,
             Some(LoyaltyChannel::App) => 0.33,

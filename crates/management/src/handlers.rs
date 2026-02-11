@@ -34,9 +34,7 @@ pub async fn handle_login(
 
 // ─── Campaigns ─────────────────────────────────────────────────────────────
 
-pub async fn list_campaigns(
-    State(state): State<ManagementState>,
-) -> Json<Vec<Campaign>> {
+pub async fn list_campaigns(State(state): State<ManagementState>) -> Json<Vec<Campaign>> {
     Json(state.store.list_campaigns())
 }
 
@@ -44,7 +42,11 @@ pub async fn get_campaign(
     State(state): State<ManagementState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Campaign>, StatusCode> {
-    state.store.get_campaign(id).map(Json).ok_or(StatusCode::NOT_FOUND)
+    state
+        .store
+        .get_campaign(id)
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
 }
 
 pub async fn create_campaign(
@@ -61,7 +63,11 @@ pub async fn update_campaign(
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateCampaignRequest>,
 ) -> Result<Json<Campaign>, StatusCode> {
-    state.store.update_campaign(id, req, "admin").map(Json).ok_or(StatusCode::NOT_FOUND)
+    state
+        .store
+        .update_campaign(id, req, "admin")
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
 }
 
 pub async fn delete_campaign(
@@ -80,21 +86,27 @@ pub async fn pause_campaign(
     State(state): State<ManagementState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Campaign>, StatusCode> {
-    state.store.pause_campaign(id, "admin").map(Json).ok_or(StatusCode::NOT_FOUND)
+    state
+        .store
+        .pause_campaign(id, "admin")
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
 }
 
 pub async fn resume_campaign(
     State(state): State<ManagementState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Campaign>, StatusCode> {
-    state.store.resume_campaign(id, "admin").map(Json).ok_or(StatusCode::NOT_FOUND)
+    state
+        .store
+        .resume_campaign(id, "admin")
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
 }
 
 // ─── Creatives ─────────────────────────────────────────────────────────────
 
-pub async fn list_creatives(
-    State(state): State<ManagementState>,
-) -> Json<Vec<Creative>> {
+pub async fn list_creatives(State(state): State<ManagementState>) -> Json<Vec<Creative>> {
     Json(state.store.list_creatives())
 }
 
@@ -102,7 +114,11 @@ pub async fn get_creative(
     State(state): State<ManagementState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Creative>, StatusCode> {
-    state.store.get_creative(id).map(Json).ok_or(StatusCode::NOT_FOUND)
+    state
+        .store
+        .get_creative(id)
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
 }
 
 pub async fn create_creative(
@@ -119,7 +135,11 @@ pub async fn update_creative(
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateCreativeRequest>,
 ) -> Result<Json<Creative>, StatusCode> {
-    state.store.update_creative(id, req, "admin").map(Json).ok_or(StatusCode::NOT_FOUND)
+    state
+        .store
+        .update_creative(id, req, "admin")
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
 }
 
 pub async fn delete_creative(
@@ -136,9 +156,7 @@ pub async fn delete_creative(
 
 // ─── Monitoring ────────────────────────────────────────────────────────────
 
-pub async fn monitoring_overview(
-    State(state): State<ManagementState>,
-) -> Json<MonitoringOverview> {
+pub async fn monitoring_overview(State(state): State<ManagementState>) -> Json<MonitoringOverview> {
     Json(state.store.get_monitoring_overview())
 }
 
@@ -146,14 +164,16 @@ pub async fn campaign_stats(
     State(state): State<ManagementState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<CampaignStats>, StatusCode> {
-    state.store.get_campaign_stats(id).map(Json).ok_or(StatusCode::NOT_FOUND)
+    state
+        .store
+        .get_campaign_stats(id)
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
 }
 
 // ─── Models ────────────────────────────────────────────────────────────────
 
-pub async fn model_reload(
-    State(state): State<ManagementState>,
-) -> Json<serde_json::Value> {
+pub async fn model_reload(State(state): State<ManagementState>) -> Json<serde_json::Value> {
     state.store.get_audit_log(); // Touch store to prove it's alive
     metrics::counter!("management.model_reloads").increment(1);
     // In production: trigger NPU hot-reload via NATS ModelUpdate message
@@ -165,17 +185,13 @@ pub async fn model_reload(
 
 // ─── Audit Log ─────────────────────────────────────────────────────────────
 
-pub async fn audit_log(
-    State(state): State<ManagementState>,
-) -> Json<Vec<AuditLogEntry>> {
+pub async fn audit_log(State(state): State<ManagementState>) -> Json<Vec<AuditLogEntry>> {
     Json(state.store.get_audit_log())
 }
 
 // ─── Journeys ─────────────────────────────────────────────────────────
 
-pub async fn list_journeys(
-    State(state): State<ManagementState>,
-) -> Json<Vec<serde_json::Value>> {
+pub async fn list_journeys(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {
     Json(state.store.list_journeys())
 }
 
@@ -183,7 +199,11 @@ pub async fn get_journey(
     State(state): State<ManagementState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    state.store.get_journey(id).map(Json).ok_or(StatusCode::NOT_FOUND)
+    state
+        .store
+        .get_journey(id)
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
 }
 
 pub async fn create_journey(
@@ -225,7 +245,11 @@ pub async fn get_dco_template(
     State(state): State<ManagementState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    state.store.get_dco_template(id).map(Json).ok_or(StatusCode::NOT_FOUND)
+    state
+        .store
+        .get_dco_template(id)
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
 }
 
 pub async fn create_dco_template(
@@ -274,7 +298,11 @@ pub async fn get_experiment(
     State(state): State<ManagementState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    state.store.get_experiment(id).map(Json).ok_or(StatusCode::NOT_FOUND)
+    state
+        .store
+        .get_experiment(id)
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
 }
 
 pub async fn create_experiment(

@@ -57,9 +57,7 @@ pub async fn handle_balance(
 }
 
 /// POST /v1/loyalty/reward-signal — Record an RL reward signal for SNN training.
-pub async fn handle_reward_signal(
-    Json(signal): Json<LoyaltyRewardSignal>,
-) -> StatusCode {
+pub async fn handle_reward_signal(Json(signal): Json<LoyaltyRewardSignal>) -> StatusCode {
     metrics::counter!(
         "loyalty.reward_signals",
         "type" => format!("{:?}", signal.signal_type)

@@ -670,10 +670,8 @@ mod tests {
         engine.create_journey(journey).unwrap();
         engine.enter_journey(&journey_id, "user-456").unwrap();
 
-        let suppressed = engine.check_suppressions(
-            "user-456",
-            &["camp-A".to_string(), "camp-C".to_string()],
-        );
+        let suppressed =
+            engine.check_suppressions("user-456", &["camp-A".to_string(), "camp-C".to_string()]);
 
         assert!(suppressed.contains(&"camp-A".to_string()));
         assert!(!suppressed.contains(&"camp-C".to_string()));

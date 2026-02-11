@@ -75,9 +75,9 @@ impl DcoEngine {
             .get_template(&request.template_id)
             .ok_or_else(|| anyhow!("template {} not found", request.template_id))?;
 
-        let combinations =
-            self.assembler
-                .generate_combinations(&template, request.max_variants);
+        let combinations = self
+            .assembler
+            .generate_combinations(&template, request.max_variants);
         let total_combinations = combinations.len() as u64;
 
         let scores =
@@ -141,8 +141,7 @@ impl DcoEngine {
                                     variant.performance.clicks += 1;
                                     // Recompute CTR
                                     if variant.performance.impressions > 0 {
-                                        variant.performance.ctr = variant.performance.clicks
-                                            as f64
+                                        variant.performance.ctr = variant.performance.clicks as f64
                                             / variant.performance.impressions as f64;
                                     }
                                 }

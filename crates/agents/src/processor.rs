@@ -51,12 +51,7 @@ impl BidProcessor {
             .user
             .as_ref()
             .and_then(|u| u.id.clone())
-            .or_else(|| {
-                request
-                    .user
-                    .as_ref()
-                    .and_then(|u| u.buyeruid.clone())
-            })
+            .or_else(|| request.user.as_ref().and_then(|u| u.buyeruid.clone()))
             .unwrap_or_else(|| "anonymous".to_string());
 
         // Fetch user profile from cache
@@ -93,9 +88,10 @@ impl BidProcessor {
         }
 
         // Generate candidate offer IDs (in production, these come from campaign targeting)
-        let offer_ids: Vec<String> = (0..self.npu.config().batch_size.min(request.imp.len().max(4)))
-            .map(|i| format!("offer-{:04}", i))
-            .collect();
+        let offer_ids: Vec<String> =
+            (0..self.npu.config().batch_size.min(request.imp.len().max(4)))
+                .map(|i| format!("offer-{:04}", i))
+                .collect();
 
         // Run NPU inference to score offers (loyalty features are baked into the feature vector)
         let inference_start = std::time::Instant::now();
@@ -124,7 +120,11 @@ impl BidProcessor {
             let best = results
                 .iter()
                 .filter(|r| r.recommended_bid >= imp.bidfloor)
-                .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap_or(std::cmp::Ordering::Equal));
+                .max_by(|a, b| {
+                    a.score
+                        .partial_cmp(&b.score)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
 
             if let Some(winner) = best {
                 let bid_id = Uuid::new_v4().to_string();
@@ -133,7 +133,10 @@ impl BidProcessor {
                     impression_id: imp.id.clone(),
                     offer_id: winner.offer_id.clone(),
                     bid_price: winner.recommended_bid,
-                    creative_url: format!("https://cdn.campaignexpress.io/creative/{}", winner.offer_id),
+                    creative_url: format!(
+                        "https://cdn.campaignexpress.io/creative/{}",
+                        winner.offer_id
+                    ),
                     landing_url: format!("https://campaignexpress.io/click/{}", winner.offer_id),
                     agent_id: agent_id.to_string(),
                     node_id: self.node_id.clone(),
@@ -151,10 +154,7 @@ impl BidProcessor {
                         "https://campaignexpress.io/win/{}/{}",
                         request_id, imp.id
                     )),
-                    adm: Some(format!(
-                        "<img src=\"{}\" />",
-                        decision.creative_url
-                    )),
+                    adm: Some(format!("<img src=\"{}\" />", decision.creative_url)),
                     crid: Some(decision.offer_id.clone()),
                     w: imp.banner.as_ref().and_then(|b| b.w).unwrap_or(300),
                     h: imp.banner.as_ref().and_then(|b| b.h).unwrap_or(250),

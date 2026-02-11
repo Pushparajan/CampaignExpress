@@ -232,8 +232,12 @@ pub struct CreateCreativeRequest {
     pub metadata: serde_json::Value,
 }
 
-fn default_width() -> u32 { 300 }
-fn default_height() -> u32 { 250 }
+fn default_width() -> u32 {
+    300
+}
+fn default_height() -> u32 {
+    250
+}
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateCreativeRequest {

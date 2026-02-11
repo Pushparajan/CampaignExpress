@@ -268,11 +268,21 @@ pub struct LoyaltyConfig {
     pub qualifying_period_months: u32,
 }
 
-fn default_loyalty_enabled() -> bool { true }
-fn default_star_expiry_days() -> u32 { 180 }
-fn default_gold_threshold() -> u32 { 500 }
-fn default_reserve_threshold() -> u32 { 2500 }
-fn default_qualifying_period_months() -> u32 { 12 }
+fn default_loyalty_enabled() -> bool {
+    true
+}
+fn default_star_expiry_days() -> u32 {
+    180
+}
+fn default_gold_threshold() -> u32 {
+    500
+}
+fn default_reserve_threshold() -> u32 {
+    2500
+}
+fn default_qualifying_period_months() -> u32 {
+    12
+}
 
 impl Default for LoyaltyConfig {
     fn default() -> Self {
@@ -298,9 +308,15 @@ pub struct DspIntegrationConfig {
     pub max_concurrent_requests: usize,
 }
 
-fn default_dsp_enabled() -> bool { false }
-fn default_dsp_timeout_ms() -> u64 { 200 }
-fn default_dsp_max_concurrent() -> usize { 1000 }
+fn default_dsp_enabled() -> bool {
+    false
+}
+fn default_dsp_timeout_ms() -> u64 {
+    200
+}
+fn default_dsp_max_concurrent() -> usize {
+    1000
+}
 
 impl Default for DspIntegrationConfig {
     fn default() -> Self {
@@ -325,10 +341,18 @@ pub struct JourneyConfig {
     pub evaluation_interval_ms: u64,
 }
 
-fn default_journey_enabled() -> bool { true }
-fn default_max_active_journeys() -> usize { 100 }
-fn default_max_instances_per_journey() -> usize { 1_000_000 }
-fn default_evaluation_interval_ms() -> u64 { 100 }
+fn default_journey_enabled() -> bool {
+    true
+}
+fn default_max_active_journeys() -> usize {
+    100
+}
+fn default_max_instances_per_journey() -> usize {
+    1_000_000
+}
+fn default_evaluation_interval_ms() -> u64 {
+    100
+}
 
 impl Default for JourneyConfig {
     fn default() -> Self {
@@ -352,9 +376,15 @@ pub struct DcoConfig {
     pub exploration_rate: f64,
 }
 
-fn default_dco_enabled() -> bool { true }
-fn default_max_combinations() -> usize { 1000 }
-fn default_exploration_rate() -> f64 { 0.1 }
+fn default_dco_enabled() -> bool {
+    true
+}
+fn default_max_combinations() -> usize {
+    1000
+}
+fn default_exploration_rate() -> f64 {
+    0.1
+}
 
 impl Default for DcoConfig {
     fn default() -> Self {
@@ -377,9 +407,15 @@ pub struct CdpGlobalConfig {
     pub webhook_secret: String,
 }
 
-fn default_cdp_enabled() -> bool { false }
-fn default_sync_interval_secs() -> u64 { 300 }
-fn default_webhook_secret() -> String { "cdp-webhook-secret".to_string() }
+fn default_cdp_enabled() -> bool {
+    false
+}
+fn default_sync_interval_secs() -> u64 {
+    300
+}
+fn default_webhook_secret() -> String {
+    "cdp-webhook-secret".to_string()
+}
 
 impl Default for CdpGlobalConfig {
     fn default() -> Self {
@@ -394,13 +430,12 @@ impl Default for CdpGlobalConfig {
 impl AppConfig {
     /// Load configuration from environment variables and optional config file.
     pub fn load() -> Result<Self, config::ConfigError> {
-        let builder = config::Config::builder()
-            .add_source(
-                config::Environment::with_prefix("CAMPAIGN_EXPRESS")
-                    .separator("__")
-                    .try_parsing(true)
-                    .list_separator(","),
-            );
+        let builder = config::Config::builder().add_source(
+            config::Environment::with_prefix("CAMPAIGN_EXPRESS")
+                .separator("__")
+                .try_parsing(true)
+                .list_separator(","),
+        );
 
         let config = builder.build()?;
         config.try_deserialize()

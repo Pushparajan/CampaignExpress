@@ -50,9 +50,7 @@ pub async fn handle_dsp_win(
 }
 
 /// GET /v1/dsp/status — Get DSP routing status.
-pub async fn handle_dsp_status(
-    State(state): State<DspState>,
-) -> Json<DspStatusResponse> {
+pub async fn handle_dsp_status(State(state): State<DspState>) -> Json<DspStatusResponse> {
     Json(DspStatusResponse {
         active_dsps: state.router.active_dsp_count(),
     })

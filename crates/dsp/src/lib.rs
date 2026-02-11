@@ -1,6 +1,6 @@
 //! DSP integration layer — routes bids to demand-side platforms.
 
-pub mod router;
 pub mod clients;
+pub mod router;
 
 pub use router::DspRouter;

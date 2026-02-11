@@ -50,8 +50,7 @@ impl VariantScorer {
                     let perf = &variant.performance;
 
                     // Thompson-sampled CTR for explore/exploit balance
-                    let sampled_ctr =
-                        self.thompson_sample(perf.impressions, perf.clicks);
+                    let sampled_ctr = self.thompson_sample(perf.impressions, perf.clicks);
 
                     // CVR contribution
                     let cvr_score = perf.cvr as f32;
@@ -78,8 +77,7 @@ impl VariantScorer {
                     };
 
                     // Weighted combination: CTR 50%, CVR 30%, segment affinity 20%
-                    let variant_score =
-                        sampled_ctr * 0.5 + cvr_score * 0.3 + segment_score * 0.2;
+                    let variant_score = sampled_ctr * 0.5 + cvr_score * 0.3 + segment_score * 0.2;
 
                     total_score += variant_score;
                     component_count += 1.0;
@@ -153,9 +151,7 @@ fn gamma_sample<R: Rng>(rng: &mut R, shape: f64) -> f64 {
 
         let u: f64 = rng.gen();
         // Acceptance criterion
-        if u < 1.0 - 0.0331 * z.powi(4)
-            || u.ln() < 0.5 * z * z + d * (1.0 - v + v.ln())
-        {
+        if u < 1.0 - 0.0331 * z.powi(4) || u.ln() < 0.5 * z * z + d * (1.0 - v + v.ln()) {
             return d * v;
         }
     }

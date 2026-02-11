@@ -80,11 +80,7 @@ pub struct BiddingServiceImpl {
 }
 
 impl BiddingServiceImpl {
-    pub fn new(
-        processor: Arc<BidProcessor>,
-        node_id: String,
-        active_agents: u32,
-    ) -> Self {
+    pub fn new(processor: Arc<BidProcessor>, node_id: String, active_agents: u32) -> Self {
         Self {
             processor,
             node_id,
@@ -141,7 +137,8 @@ impl BiddingServiceServer for BiddingServiceImpl {
         }))
     }
 
-    type StreamBidsStream = tokio_stream::wrappers::ReceiverStream<Result<BidResponseProto, Status>>;
+    type StreamBidsStream =
+        tokio_stream::wrappers::ReceiverStream<Result<BidResponseProto, Status>>;
 
     async fn stream_bids(
         &self,
@@ -161,7 +158,8 @@ impl BiddingServiceServer for BiddingServiceImpl {
                     Ok(bid_request) => match processor.process(&bid_request, &agent_id).await {
                         Ok(bid_response) => {
                             let has_bid = !bid_response.seatbid.is_empty();
-                            let openrtb_json = serde_json::to_string(&bid_response).unwrap_or_default();
+                            let openrtb_json =
+                                serde_json::to_string(&bid_response).unwrap_or_default();
                             Ok(BidResponseProto {
                                 openrtb_json,
                                 request_id: bid_response.id,
@@ -181,7 +179,9 @@ impl BiddingServiceServer for BiddingServiceImpl {
             }
         });
 
-        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(rx)))
+        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
+            rx,
+        )))
     }
 }
 

@@ -69,7 +69,10 @@ impl CreativeAssembler {
             combinations = next;
         }
 
-        info!(count = combinations.len(), "generated creative combinations");
+        info!(
+            count = combinations.len(),
+            "generated creative combinations"
+        );
         combinations
     }
 
@@ -83,11 +86,7 @@ impl CreativeAssembler {
         let mut selected_components = HashMap::new();
 
         for (component_id, variant_id) in combination {
-            if let Some(comp) = template
-                .components
-                .iter()
-                .find(|c| &c.id == component_id)
-            {
+            if let Some(comp) = template.components.iter().find(|c| &c.id == component_id) {
                 if let Some(variant) = comp.variants.iter().find(|v| &v.id == variant_id) {
                     let key = component_type_key(&comp.component_type);
                     selected_components.insert(

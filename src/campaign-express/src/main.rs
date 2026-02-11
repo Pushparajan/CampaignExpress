@@ -85,16 +85,12 @@ async fn main() -> anyhow::Result<()> {
     let npu = Arc::new(NpuEngine::new(&config.npu)?);
 
     // Initialize Redis cache
-    let cache = Arc::new(
-        RedisCache::new(&config.redis)
-            .await
-            .unwrap_or_else(|e| {
-                error!(error = %e, "Failed to connect to Redis, will retry on demand");
-                // In production, this would block until connected.
-                // For development, we proceed with a placeholder.
-                panic!("Redis connection required: {}", e);
-            }),
-    );
+    let cache = Arc::new(RedisCache::new(&config.redis).await.unwrap_or_else(|e| {
+        error!(error = %e, "Failed to connect to Redis, will retry on demand");
+        // In production, this would block until connected.
+        // For development, we proceed with a placeholder.
+        panic!("Redis connection required: {}", e);
+    }));
 
     // Initialize analytics logger
     let analytics = Arc::new(
@@ -119,7 +115,10 @@ async fn main() -> anyhow::Result<()> {
     // Start NATS-based agents (unless API-only mode)
     if !cli.api_only {
         match agent_manager.start().await {
-            Ok(_) => info!("Agent manager started with {} agents", config.agents_per_node),
+            Ok(_) => info!(
+                "Agent manager started with {} agents",
+                config.agents_per_node
+            ),
             Err(e) => {
                 error!(error = %e, "Failed to start agent manager, running in API-only mode");
             }

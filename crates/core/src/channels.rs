@@ -40,7 +40,7 @@ impl IngestSource {
     /// Priority weighting for deduplication (higher = preferred).
     pub fn priority(&self) -> u8 {
         match self {
-            IngestSource::Pos => 10,       // Ground truth
+            IngestSource::Pos => 10, // Ground truth
             IngestSource::MobileApp => 8,
             IngestSource::Kiosk => 7,
             IngestSource::Web => 6,

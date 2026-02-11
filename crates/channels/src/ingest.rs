@@ -24,10 +24,7 @@ impl IngestProcessor {
     /// Process a raw ingest event: validate, enrich, and route.
     pub fn process_event(&self, event: &IngestEvent) -> Result<ProcessedIngest, anyhow::Error> {
         if !self.enabled_sources.contains(&event.source) {
-            return Err(anyhow::anyhow!(
-                "Source {:?} not enabled",
-                event.source
-            ));
+            return Err(anyhow::anyhow!("Source {:?} not enabled", event.source));
         }
 
         metrics::counter!(
@@ -50,9 +47,7 @@ impl IngestProcessor {
         // Determine loyalty relevance
         let loyalty_relevant = matches!(
             event.event_type,
-            IngestEventType::Purchase
-                | IngestEventType::LoyaltySwipe
-                | IngestEventType::CheckIn
+            IngestEventType::Purchase | IngestEventType::LoyaltySwipe | IngestEventType::CheckIn
         );
 
         debug!(
