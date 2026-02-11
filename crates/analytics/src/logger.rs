@@ -34,6 +34,7 @@ impl AnalyticsLogger {
     }
 
     /// Log an analytics event (non-blocking).
+    #[allow(clippy::too_many_arguments)]
     pub async fn log_event(
         &self,
         event_type: EventType,

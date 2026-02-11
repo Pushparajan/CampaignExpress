@@ -230,7 +230,7 @@ pub struct DynamicSegment {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SegmentCriteria {
     pub min_recency_days: Option<u32>,
     pub max_recency_days: Option<u32>,
@@ -241,22 +241,6 @@ pub struct SegmentCriteria {
     pub required_events: Vec<String>,
     pub excluded_events: Vec<String>,
     pub loyalty_tiers: Vec<String>,
-}
-
-impl Default for SegmentCriteria {
-    fn default() -> Self {
-        Self {
-            min_recency_days: None,
-            max_recency_days: None,
-            min_frequency: None,
-            max_frequency: None,
-            min_monetary: None,
-            max_monetary: None,
-            required_events: Vec::new(),
-            excluded_events: Vec::new(),
-            loyalty_tiers: Vec::new(),
-        }
-    }
 }
 
 // ─── Experimentation ────────────────────────────────────────────────────

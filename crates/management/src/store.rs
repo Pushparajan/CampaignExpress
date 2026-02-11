@@ -132,7 +132,7 @@ impl ManagementStore {
                 .creatives
                 .iter()
                 .filter(|r| r.value().campaign_id == id)
-                .map(|r| r.key().clone())
+                .map(|r| *r.key())
                 .collect();
             for cid in creative_ids {
                 self.creatives.remove(&cid);
@@ -886,13 +886,7 @@ impl ManagementStore {
         // Seed sync history
         for (i, (name, platform, _, _)) in platforms.iter().enumerate() {
             let sync_id = Uuid::new_v4();
-            let status = if i % 3 == 0 {
-                "completed"
-            } else if i % 3 == 1 {
-                "completed"
-            } else {
-                "failed"
-            };
+            let status = if i % 3 == 2 { "failed" } else { "completed" };
             self.cdp_sync_history.insert(sync_id, serde_json::json!({
                 "id": sync_id,
                 "platform": platform,

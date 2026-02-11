@@ -100,7 +100,7 @@ impl ExperimentEngine {
             experiment_id: experiment.id,
             is_significant,
             best_variant_id: best_variant.map(|v| v.id),
-            best_lift: best_lift,
+            best_lift,
             total_samples,
             required_samples: experiment.min_sample_size,
         })

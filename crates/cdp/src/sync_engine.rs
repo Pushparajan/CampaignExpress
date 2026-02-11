@@ -19,6 +19,12 @@ pub struct CdpSyncEngine {
     sync_history: Arc<DashMap<Uuid, SyncEvent>>,
 }
 
+impl Default for CdpSyncEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CdpSyncEngine {
     /// Create a new engine with empty configuration.
     pub fn new() -> Self {
