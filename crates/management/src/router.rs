@@ -104,5 +104,60 @@ pub fn management_router() -> Router {
             "/api/v1/management/experiments/{id}",
             get(handlers::get_experiment),
         )
+        // Platform
+        .route(
+            "/api/v1/management/platform/tenants",
+            get(handlers::list_tenants),
+        )
+        .route(
+            "/api/v1/management/platform/roles",
+            get(handlers::list_roles),
+        )
+        .route(
+            "/api/v1/management/platform/compliance",
+            get(handlers::compliance_status),
+        )
+        .route(
+            "/api/v1/management/platform/privacy/dsrs",
+            get(handlers::list_dsrs),
+        )
+        // Billing
+        .route(
+            "/api/v1/management/billing/plans",
+            get(handlers::list_plans),
+        )
+        .route(
+            "/api/v1/management/billing/subscriptions/{tenant_id}",
+            get(handlers::get_subscription),
+        )
+        .route(
+            "/api/v1/management/billing/invoices",
+            get(handlers::list_invoices),
+        )
+        .route(
+            "/api/v1/management/billing/usage/{tenant_id}",
+            get(handlers::get_usage),
+        )
+        .route(
+            "/api/v1/management/billing/onboarding/{tenant_id}",
+            get(handlers::get_onboarding),
+        )
+        // Ops
+        .route(
+            "/api/v1/management/ops/status",
+            get(handlers::ops_status),
+        )
+        .route(
+            "/api/v1/management/ops/incidents",
+            get(handlers::list_incidents),
+        )
+        .route(
+            "/api/v1/management/ops/sla",
+            get(handlers::sla_report),
+        )
+        .route(
+            "/api/v1/management/ops/backups",
+            get(handlers::list_backups),
+        )
         .with_state(state)
 }

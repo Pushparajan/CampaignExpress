@@ -1,0 +1,160 @@
+# =============================================================================
+# Campaign Express — Helm Values
+# =============================================================================
+
+replicaCount: 20
+
+image:
+  repository: campaign-express
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: campaign-express
+  annotations: {}
+
+# ── Application Config ────────────────────────────────────────────────────────
+
+config:
+  agentsPerNode: 20
+  apiHost: "0.0.0.0"
+  httpPort: 8080
+  grpcPort: 9090
+  metricsPort: 9091
+  npuModelPath: /models/colanet.onnx
+  npuDevice: cpu
+  logLevel: "campaign_express=info"
+
+# ── NATS ──────────────────────────────────────────────────────────────────────
+
+nats:
+  url: "nats://nats:4222"
+
+# ── Redis ─────────────────────────────────────────────────────────────────────
+
+redis:
+  url: "redis://redis-cluster:6379"
+
+# ── ClickHouse ────────────────────────────────────────────────────────────────
+
+clickhouse:
+  url: "http://clickhouse:8123"
+  database: "campaign_analytics"
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+
+resources:
+  requests:
+    cpu: "2"
+    memory: "4Gi"
+  limits:
+    cpu: "4"
+    memory: "8Gi"
+
+# ── NPU ───────────────────────────────────────────────────────────────────────
+
+npu:
+  enabled: true
+  resourceName: "amd.com/xdna"
+  resourceCount: 1
+
+# ── Autoscaling ───────────────────────────────────────────────────────────────
+
+autoscaling:
+  enabled: true
+  minReplicas: 10
+  maxReplicas: 40
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ── Pod Disruption Budget ─────────────────────────────────────────────────────
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: "80%"
+
+# ── Probes ────────────────────────────────────────────────────────────────────
+
+readinessProbe:
+  path: /ready
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+livenessProbe:
+  path: /live
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 5
+
+startupProbe:
+  path: /health
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 30
+
+# ── Service ───────────────────────────────────────────────────────────────────
+
+service:
+  type: ClusterIP
+  httpPort: 8080
+  grpcPort: 9090
+  metricsPort: 9091
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: campaign-express.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# ── Model Storage ─────────────────────────────────────────────────────────────
+
+modelStorage:
+  enabled: true
+  storageClass: ""
+  size: 10Gi
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+  grafanaDashboard:
+    enabled: true
+
+# ── Node Scheduling ──────────────────────────────────────────────────────────
+
+nodeSelector: {}
+
+tolerations:
+  - key: "workload"
+    operator: "Equal"
+    value: "bidding"
+    effect: "NoSchedule"
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - campaign-express
+          topologyKey: kubernetes.io/hostname

@@ -13,6 +13,9 @@ import {
   Palette,
   Database,
   FlaskConical,
+  Shield,
+  CreditCard,
+  HeartPulse,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -25,6 +28,9 @@ const navItems = [
   { href: "/cdp", label: "CDP Integrations", icon: Database },
   { href: "/experiments", label: "Experiments", icon: FlaskConical },
   { href: "/monitoring", label: "Monitoring", icon: Activity },
+  { href: "/platform", label: "Platform", icon: Shield },
+  { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/ops", label: "Operations", icon: HeartPulse },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

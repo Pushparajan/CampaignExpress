@@ -9,7 +9,8 @@ use dashmap::DashMap;
 use tracing::info;
 use uuid::Uuid;
 
-/// Thread-safe in-memory store for campaigns, creatives, journeys, DCO, CDP, experiments, and audit log.
+/// Thread-safe in-memory store for campaigns, creatives, journeys, DCO, CDP, experiments,
+/// platform (tenants, roles, compliance, privacy), billing, ops, and audit log.
 pub struct ManagementStore {
     campaigns: DashMap<Uuid, Campaign>,
     creatives: DashMap<Uuid, Creative>,
@@ -19,6 +20,20 @@ pub struct ManagementStore {
     cdp_sync_history: DashMap<Uuid, serde_json::Value>,
     experiments: DashMap<Uuid, serde_json::Value>,
     audit_log: DashMap<Uuid, AuditLogEntry>,
+    // Platform
+    tenants: DashMap<Uuid, serde_json::Value>,
+    roles: DashMap<Uuid, serde_json::Value>,
+    compliance: DashMap<String, serde_json::Value>,
+    dsrs: DashMap<Uuid, serde_json::Value>,
+    // Billing
+    plans: DashMap<Uuid, serde_json::Value>,
+    subscriptions: DashMap<Uuid, serde_json::Value>,
+    invoices: DashMap<Uuid, serde_json::Value>,
+    // Ops
+    status_components: DashMap<Uuid, serde_json::Value>,
+    incidents: DashMap<Uuid, serde_json::Value>,
+    sla_targets: DashMap<String, serde_json::Value>,
+    backup_schedules: DashMap<Uuid, serde_json::Value>,
 }
 
 impl ManagementStore {
@@ -33,12 +48,26 @@ impl ManagementStore {
             cdp_sync_history: DashMap::new(),
             experiments: DashMap::new(),
             audit_log: DashMap::new(),
+            tenants: DashMap::new(),
+            roles: DashMap::new(),
+            compliance: DashMap::new(),
+            dsrs: DashMap::new(),
+            plans: DashMap::new(),
+            subscriptions: DashMap::new(),
+            invoices: DashMap::new(),
+            status_components: DashMap::new(),
+            incidents: DashMap::new(),
+            sla_targets: DashMap::new(),
+            backup_schedules: DashMap::new(),
         };
         store.seed_demo_data();
         store.seed_journey_data();
         store.seed_dco_data();
         store.seed_cdp_data();
         store.seed_experiment_data();
+        store.seed_platform_data();
+        store.seed_billing_data();
+        store.seed_ops_data();
         store
     }
 
@@ -1056,6 +1085,370 @@ impl ManagementStore {
                 }),
             );
         }
+    }
+
+    // ─── Platform: Tenants ────────────────────────────────────────────────
+
+    pub fn list_tenants(&self) -> Vec<serde_json::Value> {
+        self.tenants.iter().map(|r| r.value().clone()).collect()
+    }
+
+    pub fn list_roles(&self) -> Vec<serde_json::Value> {
+        self.roles.iter().map(|r| r.value().clone()).collect()
+    }
+
+    pub fn get_compliance_status(&self) -> Vec<serde_json::Value> {
+        self.compliance.iter().map(|r| r.value().clone()).collect()
+    }
+
+    pub fn list_dsrs(&self) -> Vec<serde_json::Value> {
+        self.dsrs.iter().map(|r| r.value().clone()).collect()
+    }
+
+    // ─── Billing ────────────────────────────────────────────────────────────
+
+    pub fn list_plans(&self) -> Vec<serde_json::Value> {
+        let mut plans: Vec<serde_json::Value> =
+            self.plans.iter().map(|r| r.value().clone()).collect();
+        plans.sort_by(|a, b| {
+            let pa = a["monthly_price"].as_f64().unwrap_or(0.0);
+            let pb = b["monthly_price"].as_f64().unwrap_or(0.0);
+            pa.partial_cmp(&pb).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        plans
+    }
+
+    pub fn get_subscription(&self, tenant_id: Uuid) -> Option<serde_json::Value> {
+        self.subscriptions
+            .iter()
+            .find(|r| r.value()["tenant_id"].as_str() == Some(&tenant_id.to_string()))
+            .map(|r| r.value().clone())
+    }
+
+    pub fn list_invoices(&self) -> Vec<serde_json::Value> {
+        self.invoices.iter().map(|r| r.value().clone()).collect()
+    }
+
+    pub fn get_usage_summary(&self, tenant_id: Uuid) -> serde_json::Value {
+        serde_json::json!({
+            "tenant_id": tenant_id,
+            "period": "2026-02",
+            "meters": [
+                {"meter_type": "offers_served", "total_quantity": 2_450_000u64, "unit_price": 0.00001, "line_total": 24.50, "quota": 5_000_000u64, "usage_percent": 49.0},
+                {"meter_type": "api_calls", "total_quantity": 125_000u64, "unit_price": 0.000005, "line_total": 0.63, "quota": 500_000u64, "usage_percent": 25.0},
+                {"meter_type": "campaigns_active", "total_quantity": 12u64, "unit_price": 0.0, "line_total": 0.0, "quota": 100u64, "usage_percent": 12.0},
+            ],
+            "total_cost": 25.13
+        })
+    }
+
+    pub fn get_onboarding_progress(&self, tenant_id: Uuid) -> serde_json::Value {
+        serde_json::json!({
+            "tenant_id": tenant_id,
+            "steps": [
+                {"id": "account_setup", "title": "Account Setup", "description": "Configure organization details", "status": "completed", "order": 1, "required": true},
+                {"id": "team_invite", "title": "Invite Team Members", "description": "Add team members and assign roles", "status": "completed", "order": 2, "required": false},
+                {"id": "first_campaign", "title": "Create First Campaign", "description": "Launch your first campaign", "status": "in_progress", "order": 3, "required": true},
+                {"id": "connect_dsp", "title": "Connect DSP", "description": "Integrate with demand-side platforms", "status": "not_started", "order": 4, "required": false},
+                {"id": "configure_channels", "title": "Configure Channels", "description": "Set up email, push, SMS channels", "status": "not_started", "order": 5, "required": true},
+                {"id": "install_pixel", "title": "Install Tracking Pixel", "description": "Add tracking to your website", "status": "not_started", "order": 6, "required": false},
+                {"id": "launch_campaign", "title": "Launch Campaign", "description": "Go live with your first campaign", "status": "not_started", "order": 7, "required": true},
+            ],
+            "started_at": "2026-02-01T00:00:00Z",
+            "completed_at": null,
+            "completion_percent": 28.6
+        })
+    }
+
+    // ─── Ops ────────────────────────────────────────────────────────────────
+
+    pub fn get_status_page(&self) -> serde_json::Value {
+        let components: Vec<serde_json::Value> = self
+            .status_components
+            .iter()
+            .map(|r| r.value().clone())
+            .collect();
+        serde_json::json!({
+            "overall_status": "operational",
+            "components": components,
+            "updated_at": Utc::now().to_rfc3339()
+        })
+    }
+
+    pub fn list_incidents(&self) -> Vec<serde_json::Value> {
+        self.incidents.iter().map(|r| r.value().clone()).collect()
+    }
+
+    pub fn get_sla_report(&self) -> serde_json::Value {
+        let targets: Vec<serde_json::Value> = self
+            .sla_targets
+            .iter()
+            .map(|r| r.value().clone())
+            .collect();
+        serde_json::json!({
+            "report_period": "2026-02",
+            "targets": targets,
+            "overall_uptime": 99.97
+        })
+    }
+
+    pub fn list_backups(&self) -> Vec<serde_json::Value> {
+        self.backup_schedules
+            .iter()
+            .map(|r| r.value().clone())
+            .collect()
+    }
+
+    // ─── Seed: Platform ─────────────────────────────────────────────────────
+
+    fn seed_platform_data(&self) {
+        let now = Utc::now();
+        // Tenants
+        let tiers = vec![
+            ("Acme Corp", "acme-corp", "active", "professional"),
+            ("StartupXYZ", "startupxyz", "trial", "starter"),
+            ("Enterprise Global", "enterprise-global", "active", "enterprise"),
+        ];
+        for (name, slug, status, tier) in tiers {
+            let id = Uuid::new_v4();
+            self.tenants.insert(
+                id,
+                serde_json::json!({
+                    "id": id, "name": name, "slug": slug, "status": status,
+                    "pricing_tier": tier, "owner_id": Uuid::new_v4(),
+                    "settings": {
+                        "max_campaigns": if tier == "enterprise" { 0 } else { 100 },
+                        "max_users": if tier == "enterprise" { 0 } else { 25 },
+                        "max_offers_per_hour": if tier == "enterprise" { 0 } else { 5_000_000u64 },
+                        "max_api_calls_per_day": if tier == "enterprise" { 0 } else { 500_000u64 },
+                        "features_enabled": ["journeys", "dco", "experiments"],
+                        "data_retention_days": 365
+                    },
+                    "usage": {
+                        "campaigns_active": 12, "users_count": 8,
+                        "offers_served_today": 1_250_000u64,
+                        "api_calls_today": 45_000u64, "storage_bytes": 2_500_000_000u64
+                    },
+                    "created_at": now.to_rfc3339(), "updated_at": now.to_rfc3339()
+                }),
+            );
+        }
+
+        // Roles
+        let roles_data = vec![
+            ("Admin", "Full access to all features", vec!["*"], true),
+            (
+                "Campaign Manager",
+                "Create, edit, and manage campaigns and creatives",
+                vec![
+                    "campaign_read", "campaign_write", "campaign_delete",
+                    "creative_read", "creative_write", "journey_read", "journey_write",
+                    "analytics_read",
+                ],
+                true,
+            ),
+            (
+                "Analyst",
+                "View-only access to analytics and experiments",
+                vec!["analytics_read", "experiment_read", "campaign_read"],
+                true,
+            ),
+            (
+                "Viewer",
+                "Read-only access to all resources",
+                vec![
+                    "campaign_read", "creative_read", "journey_read",
+                    "experiment_read", "dco_read", "cdp_read", "analytics_read",
+                ],
+                true,
+            ),
+        ];
+        for (name, desc, perms, is_system) in roles_data {
+            let id = Uuid::new_v4();
+            self.roles.insert(
+                id,
+                serde_json::json!({
+                    "id": id, "name": name, "description": desc,
+                    "permissions": perms, "is_system": is_system,
+                    "created_at": now.to_rfc3339()
+                }),
+            );
+        }
+
+        // Compliance
+        let compliance_data = vec![
+            ("gdpr", "compliant", "2025-11-15"),
+            ("ccpa", "compliant", "2025-12-01"),
+            ("soc2", "in_progress", ""),
+            ("iso27001", "planned", ""),
+        ];
+        for (framework, status, last_audit) in compliance_data {
+            self.compliance.insert(
+                framework.to_string(),
+                serde_json::json!({
+                    "framework": framework, "status": status,
+                    "last_audit": if last_audit.is_empty() { serde_json::Value::Null } else { serde_json::json!(format!("{}T00:00:00Z", last_audit)) },
+                    "next_audit": null,
+                    "findings": []
+                }),
+            );
+        }
+
+        // DSRs
+        let dsr_types = vec![
+            ("user-1234@email.com", "erasure", "completed"),
+            ("user-5678@email.com", "access", "completed"),
+            ("user-9012@email.com", "erasure", "pending"),
+        ];
+        for (user, req_type, status) in dsr_types {
+            let id = Uuid::new_v4();
+            self.dsrs.insert(
+                id,
+                serde_json::json!({
+                    "id": id, "tenant_id": Uuid::new_v4(),
+                    "user_identifier": user, "request_type": req_type,
+                    "status": status, "requested_at": now.to_rfc3339(),
+                    "completed_at": if status == "completed" { serde_json::json!(now.to_rfc3339()) } else { serde_json::Value::Null }
+                }),
+            );
+        }
+    }
+
+    // ─── Seed: Billing ──────────────────────────────────────────────────────
+
+    fn seed_billing_data(&self) {
+        let now = Utc::now();
+        // Plans
+        let plans_data = vec![
+            ("Free", "free", 0.0, 0.0, 1000u64, 10_000u64, vec!["Basic campaigns", "Email channel"]),
+            ("Starter", "starter", 99.0, 990.0, 100_000, 100_000, vec!["Multi-channel", "Basic journeys", "5 users"]),
+            ("Professional", "professional", 499.0, 4990.0, 5_000_000, 500_000, vec!["All channels", "Advanced journeys", "DCO", "Experiments", "25 users"]),
+            ("Enterprise", "enterprise", 1999.0, 19990.0, 0, 0, vec!["Unlimited everything", "Dedicated support", "SLA guarantee", "Custom integrations", "SSO/SAML"]),
+        ];
+        for (name, tier, monthly, annual, offers, api_calls, features) in plans_data {
+            let id = Uuid::new_v4();
+            self.plans.insert(
+                id,
+                serde_json::json!({
+                    "id": id, "name": name, "tier": tier,
+                    "monthly_price": monthly, "annual_price": annual,
+                    "included_offers": offers, "included_api_calls": api_calls,
+                    "features": features
+                }),
+            );
+        }
+
+        // Invoices
+        let invoice_data = vec![
+            (499.0, "paid", 3),
+            (499.0, "paid", 2),
+            (523.50, "pending", 4),
+        ];
+        for (amount, status, items) in invoice_data {
+            let id = Uuid::new_v4();
+            let line_items: Vec<serde_json::Value> = (0..items)
+                .map(|i| {
+                    serde_json::json!({
+                        "description": format!("Line item {}", i + 1),
+                        "quantity": 1, "unit_price": amount / items as f64,
+                        "amount": amount / items as f64
+                    })
+                })
+                .collect();
+            self.invoices.insert(
+                id,
+                serde_json::json!({
+                    "id": id, "tenant_id": Uuid::new_v4(),
+                    "subscription_id": Uuid::new_v4(),
+                    "amount": amount, "currency": "USD", "status": status,
+                    "line_items": line_items,
+                    "issued_at": now.to_rfc3339(),
+                    "due_at": (now + chrono::Duration::days(30)).to_rfc3339(),
+                    "paid_at": if status == "paid" { serde_json::json!(now.to_rfc3339()) } else { serde_json::Value::Null }
+                }),
+            );
+        }
+    }
+
+    // ─── Seed: Ops ──────────────────────────────────────────────────────────
+
+    fn seed_ops_data(&self) {
+        let now = Utc::now();
+        // Status components
+        let components = vec![
+            ("API Gateway", "All endpoints responding normally", "operational", "Core"),
+            ("Bidding Engine", "Processing bids at target throughput", "operational", "Core"),
+            ("NATS Cluster", "Message queue healthy", "operational", "Infrastructure"),
+            ("Redis Cluster", "Cache layer operational", "operational", "Infrastructure"),
+            ("ClickHouse", "Analytics DB accepting writes", "operational", "Infrastructure"),
+            ("NPU Engine", "ML inference operational", "operational", "Core"),
+            ("Management UI", "Dashboard accessible", "operational", "Frontend"),
+        ];
+        for (name, desc, status, group) in components {
+            let id = Uuid::new_v4();
+            self.status_components.insert(
+                id,
+                serde_json::json!({
+                    "id": id, "name": name, "description": desc,
+                    "status": status, "group": group,
+                    "updated_at": now.to_rfc3339()
+                }),
+            );
+        }
+
+        // SLA targets
+        let sla_data = vec![
+            ("API Availability", 99.9, 99.97),
+            ("Bid Latency p99 < 10ms", 99.5, 99.82),
+            ("Data Pipeline", 99.9, 99.95),
+        ];
+        for (name, target, current) in sla_data {
+            self.sla_targets.insert(
+                name.to_string(),
+                serde_json::json!({
+                    "name": name, "target_percent": target,
+                    "current_percent": current,
+                    "measurement_window": "30 days",
+                    "last_incident": null
+                }),
+            );
+        }
+
+        // Backup schedules
+        let backups = vec![
+            ("redis", "0 */6 * * *", 7, true),
+            ("clickhouse", "0 2 * * *", 30, true),
+            ("configs", "0 0 * * *", 90, true),
+            ("models", "0 0 * * 0", 60, true),
+        ];
+        for (target, cron, retention, enabled) in backups {
+            let id = Uuid::new_v4();
+            self.backup_schedules.insert(
+                id,
+                serde_json::json!({
+                    "id": id, "target": target,
+                    "cron_expression": cron, "retention_days": retention,
+                    "enabled": enabled,
+                    "last_run": now.to_rfc3339(),
+                    "next_run": (now + chrono::Duration::hours(6)).to_rfc3339()
+                }),
+            );
+        }
+
+        // Sample resolved incident
+        let inc_id = Uuid::new_v4();
+        self.incidents.insert(
+            inc_id,
+            serde_json::json!({
+                "id": inc_id,
+                "title": "Elevated bid latency on nodes 12-15",
+                "description": "NPU inference latency exceeded 10ms threshold",
+                "severity": "minor", "status": "resolved",
+                "affected_components": ["Bidding Engine", "NPU Engine"],
+                "created_at": (now - chrono::Duration::days(3)).to_rfc3339(),
+                "resolved_at": (now - chrono::Duration::days(3) + chrono::Duration::hours(2)).to_rfc3339()
+            }),
+        );
     }
 }
 

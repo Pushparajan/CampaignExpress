@@ -264,3 +264,181 @@ export interface ExperimentVariant {
     lift: number;
   };
 }
+
+// ─── Platform Types ────────────────────────────────────────────────────
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  status: "active" | "suspended" | "trial" | "cancelled";
+  pricing_tier: "free" | "starter" | "professional" | "enterprise" | "custom";
+  owner_id: string;
+  settings: TenantSettings;
+  usage: TenantUsage;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TenantSettings {
+  max_campaigns: number;
+  max_users: number;
+  max_offers_per_hour: number;
+  max_api_calls_per_day: number;
+  features_enabled: string[];
+  data_retention_days: number;
+}
+
+export interface TenantUsage {
+  campaigns_active: number;
+  users_count: number;
+  offers_served_today: number;
+  api_calls_today: number;
+  storage_bytes: number;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  description: string;
+  permissions: string[];
+  is_system: boolean;
+  created_at: string;
+}
+
+export interface ComplianceStatus {
+  framework: string;
+  status: string;
+  last_audit?: string;
+  next_audit?: string;
+  findings: string[];
+}
+
+export interface DataSubjectRequest {
+  id: string;
+  tenant_id: string;
+  user_identifier: string;
+  request_type: "erasure" | "access" | "rectification" | "restriction" | "portability";
+  status: "pending" | "in_progress" | "completed" | "failed";
+  requested_at: string;
+  completed_at?: string;
+}
+
+// ─── Billing Types ─────────────────────────────────────────────────────
+
+export interface PricingPlan {
+  id: string;
+  name: string;
+  tier: string;
+  monthly_price: number;
+  annual_price: number;
+  included_offers: number;
+  included_api_calls: number;
+  features: string[];
+}
+
+export interface Subscription {
+  id: string;
+  tenant_id: string;
+  plan_id: string;
+  provider: "stripe" | "chargebee" | "manual";
+  status: "active" | "past_due" | "cancelled" | "trialing" | "paused";
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  tenant_id: string;
+  subscription_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  line_items: InvoiceLineItem[];
+  issued_at: string;
+  due_at: string;
+  paid_at?: string;
+}
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+}
+
+export interface UsageSummary {
+  tenant_id: string;
+  period: string;
+  meters: MeterSummary[];
+  total_cost: number;
+}
+
+export interface MeterSummary {
+  meter_type: string;
+  total_quantity: number;
+  unit_price: number;
+  line_total: number;
+  quota?: number;
+  usage_percent: number;
+}
+
+export interface OnboardingProgress {
+  tenant_id: string;
+  steps: OnboardingStep[];
+  started_at: string;
+  completed_at?: string;
+  completion_percent: number;
+}
+
+export interface OnboardingStep {
+  id: string;
+  title: string;
+  description: string;
+  status: "not_started" | "in_progress" | "completed" | "skipped";
+  order: number;
+  required: boolean;
+  completed_at?: string;
+}
+
+// ─── Ops Types ─────────────────────────────────────────────────────────
+
+export interface StatusComponent {
+  id: string;
+  name: string;
+  description: string;
+  status: "operational" | "degraded_performance" | "partial_outage" | "major_outage" | "maintenance";
+  group: string;
+  updated_at: string;
+}
+
+export interface Incident {
+  id: string;
+  title: string;
+  description: string;
+  severity: "critical" | "major" | "minor" | "info";
+  status: "detected" | "investigating" | "identified" | "monitoring" | "resolved";
+  affected_components: string[];
+  created_at: string;
+  resolved_at?: string;
+}
+
+export interface SlaTarget {
+  name: string;
+  target_percent: number;
+  current_percent: number;
+  measurement_window: string;
+  last_incident?: string;
+}
+
+export interface BackupSchedule {
+  id: string;
+  target: string;
+  cron_expression: string;
+  retention_days: number;
+  enabled: boolean;
+  last_run?: string;
+  next_run: string;
+}

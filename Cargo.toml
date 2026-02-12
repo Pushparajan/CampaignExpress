@@ -15,6 +15,9 @@ members = [
     "crates/journey",
     "crates/dco",
     "crates/cdp",
+    "crates/platform",
+    "crates/billing",
+    "crates/ops",
     "src/campaign-express",
 ]
 
@@ -90,6 +93,9 @@ campaign-management = { path = "crates/management" }
 campaign-journey = { path = "crates/journey" }
 campaign-dco = { path = "crates/dco" }
 campaign-cdp = { path = "crates/cdp" }
+campaign-platform = { path = "crates/platform" }
+campaign-billing = { path = "crates/billing" }
+campaign-ops = { path = "crates/ops" }
 
 [profile.release]
 opt-level = 3

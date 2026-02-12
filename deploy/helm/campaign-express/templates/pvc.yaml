@@ -1,0 +1,17 @@
+{{- if .Values.modelStorage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "campaign-express.fullname" . }}-models
+  labels:
+    {{- include "campaign-express.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadOnlyMany
+  {{- if .Values.modelStorage.storageClass }}
+  storageClassName: {{ .Values.modelStorage.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.modelStorage.size }}
+{{- end }}
