@@ -70,6 +70,8 @@ CampaignExpress/
 - Docker & Docker Compose
 - Node.js 18+ and npm (for the management UI)
 
+> **First time?** See [docs/PREREQUISITES.md](docs/PREREQUISITES.md) for detailed installation instructions for each platform.
+
 ### Docker Compose (full stack)
 
 ```bash
