@@ -18,6 +18,15 @@ members = [
     "crates/platform",
     "crates/billing",
     "crates/ops",
+    "crates/mobile-sdk",
+    "crates/intelligent-delivery",
+    "crates/segmentation",
+    "crates/personalization",
+    "crates/reporting",
+    "crates/integrations",
+    "crates/rl-engine",
+    "crates/plugin-marketplace",
+    "crates/sdk-docs",
     "src/campaign-express",
 ]
 
@@ -96,6 +105,15 @@ campaign-cdp = { path = "crates/cdp" }
 campaign-platform = { path = "crates/platform" }
 campaign-billing = { path = "crates/billing" }
 campaign-ops = { path = "crates/ops" }
+campaign-mobile-sdk = { path = "crates/mobile-sdk" }
+campaign-intelligent-delivery = { path = "crates/intelligent-delivery" }
+campaign-segmentation = { path = "crates/segmentation" }
+campaign-personalization = { path = "crates/personalization" }
+campaign-reporting = { path = "crates/reporting" }
+campaign-integrations = { path = "crates/integrations" }
+campaign-rl-engine = { path = "crates/rl-engine" }
+campaign-plugin-marketplace = { path = "crates/plugin-marketplace" }
+campaign-sdk-docs = { path = "crates/sdk-docs" }
 
 [profile.release]
 opt-level = 3
