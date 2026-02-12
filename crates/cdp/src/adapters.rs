@@ -69,7 +69,10 @@ impl CdpAdapter for SalesforceAdapter {
 
     fn transform_outbound(&self, profile: &CdpProfile) -> Result<serde_json::Value> {
         let mut out = serde_json::Map::new();
-        out.insert("Id".to_string(), serde_json::Value::String(profile.external_id.clone()));
+        out.insert(
+            "Id".to_string(),
+            serde_json::Value::String(profile.external_id.clone()),
+        );
         if let Some(email) = profile.attributes.get("email") {
             out.insert("Email".to_string(), email.clone());
         }
@@ -79,7 +82,11 @@ impl CdpAdapter for SalesforceAdapter {
         out.insert(
             "segments".to_string(),
             serde_json::Value::Array(
-                profile.segments.iter().map(|s| serde_json::Value::String(s.clone())).collect(),
+                profile
+                    .segments
+                    .iter()
+                    .map(|s| serde_json::Value::String(s.clone()))
+                    .collect(),
             ),
         );
         Ok(serde_json::Value::Object(out))
@@ -144,7 +151,10 @@ impl CdpAdapter for AdobeAdapter {
 
     fn transform_outbound(&self, profile: &CdpProfile) -> Result<serde_json::Value> {
         let mut out = serde_json::Map::new();
-        out.insert("adobeId".to_string(), serde_json::Value::String(profile.external_id.clone()));
+        out.insert(
+            "adobeId".to_string(),
+            serde_json::Value::String(profile.external_id.clone()),
+        );
         if let Some(email) = profile.attributes.get("email") {
             out.insert("emailAddress".to_string(), email.clone());
         }
@@ -154,7 +164,11 @@ impl CdpAdapter for AdobeAdapter {
         out.insert(
             "segments".to_string(),
             serde_json::Value::Array(
-                profile.segments.iter().map(|s| serde_json::Value::String(s.clone())).collect(),
+                profile
+                    .segments
+                    .iter()
+                    .map(|s| serde_json::Value::String(s.clone()))
+                    .collect(),
             ),
         );
         Ok(serde_json::Value::Object(out))
@@ -219,7 +233,10 @@ impl CdpAdapter for SegmentAdapter {
 
     fn transform_outbound(&self, profile: &CdpProfile) -> Result<serde_json::Value> {
         let mut out = serde_json::Map::new();
-        out.insert("userId".to_string(), serde_json::Value::String(profile.external_id.clone()));
+        out.insert(
+            "userId".to_string(),
+            serde_json::Value::String(profile.external_id.clone()),
+        );
         let traits_map: serde_json::Map<String, serde_json::Value> = profile
             .attributes
             .iter()
@@ -229,7 +246,11 @@ impl CdpAdapter for SegmentAdapter {
         out.insert(
             "segments".to_string(),
             serde_json::Value::Array(
-                profile.segments.iter().map(|s| serde_json::Value::String(s.clone())).collect(),
+                profile
+                    .segments
+                    .iter()
+                    .map(|s| serde_json::Value::String(s.clone()))
+                    .collect(),
             ),
         );
         Ok(serde_json::Value::Object(out))
@@ -306,7 +327,11 @@ impl CdpAdapter for TealiumAdapter {
         out.insert(
             "audiences".to_string(),
             serde_json::Value::Array(
-                profile.segments.iter().map(|s| serde_json::Value::String(s.clone())).collect(),
+                profile
+                    .segments
+                    .iter()
+                    .map(|s| serde_json::Value::String(s.clone()))
+                    .collect(),
             ),
         );
         Ok(serde_json::Value::Object(out))
@@ -373,7 +398,10 @@ impl CdpAdapter for HightouchAdapter {
 
     fn transform_outbound(&self, profile: &CdpProfile) -> Result<serde_json::Value> {
         let mut out = serde_json::Map::new();
-        out.insert("id".to_string(), serde_json::Value::String(profile.external_id.clone()));
+        out.insert(
+            "id".to_string(),
+            serde_json::Value::String(profile.external_id.clone()),
+        );
         if let Some(email) = profile.attributes.get("email") {
             out.insert("email".to_string(), email.clone());
         }
@@ -387,7 +415,11 @@ impl CdpAdapter for HightouchAdapter {
         out.insert(
             "segments".to_string(),
             serde_json::Value::Array(
-                profile.segments.iter().map(|s| serde_json::Value::String(s.clone())).collect(),
+                profile
+                    .segments
+                    .iter()
+                    .map(|s| serde_json::Value::String(s.clone()))
+                    .collect(),
             ),
         );
         Ok(serde_json::Value::Object(out))

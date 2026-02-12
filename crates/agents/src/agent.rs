@@ -36,7 +36,10 @@ impl BidAgent {
                 "Agent started, subscribing to NATS queue"
             );
 
-            let subscriber = match nats_client.queue_subscribe(subject.clone(), "bid-agents".to_string()).await {
+            let subscriber = match nats_client
+                .queue_subscribe(subject.clone(), "bid-agents".to_string())
+                .await
+            {
                 Ok(sub) => sub,
                 Err(e) => {
                     error!(agent_id = %agent_id, error = %e, "Failed to subscribe to NATS");
@@ -100,7 +103,11 @@ impl BidAgent {
 
 /// Placeholder for NATS publish — in the full flow, the agent would hold
 /// its own client reference. For now this is a stub.
-async fn nats_publish(_agent_id: &str, _reply: async_nats::Subject, _payload: Vec<u8>) -> anyhow::Result<()> {
+async fn nats_publish(
+    _agent_id: &str,
+    _reply: async_nats::Subject,
+    _payload: Vec<u8>,
+) -> anyhow::Result<()> {
     // In the real flow, the NATS client is used here to publish the response.
     // The API server handles direct HTTP responses instead of NATS reply for REST.
     Ok(())

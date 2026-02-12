@@ -32,10 +32,7 @@ impl DspRouter {
             clients.push(client);
         }
 
-        info!(
-            dsp_count = clients.len(),
-            "DSP router initialized"
-        );
+        info!(dsp_count = clients.len(), "DSP router initialized");
 
         Self {
             clients,
@@ -45,7 +42,12 @@ impl DspRouter {
     }
 
     /// Route a bid request to all enabled DSPs and collect responses.
-    pub fn route_bid(&self, request_id: &str, openrtb_json: &str, impression_ids: &[String]) -> Vec<DspBidResponse> {
+    pub fn route_bid(
+        &self,
+        request_id: &str,
+        openrtb_json: &str,
+        impression_ids: &[String],
+    ) -> Vec<DspBidResponse> {
         if !self.config.enabled || self.clients.is_empty() {
             return Vec::new();
         }
@@ -66,7 +68,8 @@ impl DspRouter {
             let mut req = dsp_request.clone();
             req.platform = client.platform();
 
-            metrics::counter!("dsp.requests", "platform" => client.platform().seat_id()).increment(1);
+            metrics::counter!("dsp.requests", "platform" => client.platform().seat_id())
+                .increment(1);
 
             match client.send_bid(&req) {
                 Ok(resp) => {

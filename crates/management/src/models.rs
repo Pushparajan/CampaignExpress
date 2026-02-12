@@ -32,18 +32,13 @@ pub enum CampaignStatus {
     Error,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum PacingStrategy {
+    #[default]
     Even,
     Accelerated,
     Manual,
-}
-
-impl Default for PacingStrategy {
-    fn default() -> Self {
-        PacingStrategy::Even
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -232,8 +227,12 @@ pub struct CreateCreativeRequest {
     pub metadata: serde_json::Value,
 }
 
-fn default_width() -> u32 { 300 }
-fn default_height() -> u32 { 250 }
+fn default_width() -> u32 {
+    300
+}
+fn default_height() -> u32 {
+    250
+}
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateCreativeRequest {

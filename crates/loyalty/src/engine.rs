@@ -35,10 +35,10 @@ impl LoyaltyEngine {
 
         // Channel bonuses
         for bonus in &profile.earning_bonuses {
-            if bonus.channel == request.channel {
-                if bonus.valid_until.map(|v| Utc::now() < v).unwrap_or(true) {
-                    rate += bonus.multiplier - 1.0;
-                }
+            if bonus.channel == request.channel
+                && bonus.valid_until.map(|v| Utc::now() < v).unwrap_or(true)
+            {
+                rate += bonus.multiplier - 1.0;
             }
         }
 

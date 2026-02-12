@@ -18,7 +18,11 @@ pub struct RedisCache {
 impl RedisCache {
     /// Connect to Redis (single node or cluster).
     pub async fn new(config: &RedisConfig) -> anyhow::Result<Self> {
-        let url = config.urls.first().cloned().unwrap_or_else(|| "redis://localhost:6379".to_string());
+        let url = config
+            .urls
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "redis://localhost:6379".to_string());
 
         info!(url = %url, "Connecting to Redis");
 

@@ -64,10 +64,7 @@ impl AgentManager {
         let subject = format!("{}.bid-requests", self.config.nats.stream_name);
 
         for i in 0..self.config.agents_per_node {
-            let agent_id = format!(
-                "{}-agent-{:02}",
-                self.config.node_id, i
-            );
+            let agent_id = format!("{}-agent-{:02}", self.config.node_id, i);
 
             let agent = BidAgent::new(
                 agent_id.clone(),

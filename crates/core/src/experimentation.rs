@@ -36,7 +36,9 @@ impl ExperimentEngine {
             return None;
         }
         // Deterministic assignment based on user_id hash
-        let hash = user_id.bytes().fold(0u64, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u64));
+        let hash = user_id
+            .bytes()
+            .fold(0u64, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u64));
         let normalized = (hash % 10000) as f64 / 10000.0;
 
         let mut cumulative = 0.0;
@@ -57,7 +59,8 @@ impl ExperimentEngine {
                     variant.results.conversions += 1;
                     variant.results.revenue += revenue;
                     if variant.results.sample_size > 0 {
-                        variant.results.conversion_rate = variant.results.conversions as f64 / variant.results.sample_size as f64;
+                        variant.results.conversion_rate =
+                            variant.results.conversions as f64 / variant.results.sample_size as f64;
                     }
                     break;
                 }
@@ -73,9 +76,12 @@ impl ExperimentEngine {
         let mut best_lift = 0.0f64;
 
         for variant in &experiment.variants {
-            if variant.is_control { continue; }
+            if variant.is_control {
+                continue;
+            }
             if control.results.conversion_rate > 0.0 {
-                let lift = (variant.results.conversion_rate - control.results.conversion_rate) / control.results.conversion_rate;
+                let lift = (variant.results.conversion_rate - control.results.conversion_rate)
+                    / control.results.conversion_rate;
                 if lift > best_lift {
                     best_lift = lift;
                     best_variant = Some(variant);
@@ -83,14 +89,18 @@ impl ExperimentEngine {
             }
         }
 
-        let total_samples: u64 = experiment.variants.iter().map(|v| v.results.sample_size).sum();
+        let total_samples: u64 = experiment
+            .variants
+            .iter()
+            .map(|v| v.results.sample_size)
+            .sum();
         let is_significant = total_samples >= experiment.min_sample_size;
 
         Some(SignificanceResult {
             experiment_id: experiment.id,
             is_significant,
             best_variant_id: best_variant.map(|v| v.id),
-            best_lift: best_lift,
+            best_lift,
             total_samples,
             required_samples: experiment.min_sample_size,
         })

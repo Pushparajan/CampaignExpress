@@ -83,10 +83,16 @@ impl ActivationDispatcher {
     ) -> Option<ActivationChannel> {
         // Priority: in-store > push > in-app > SMS > email > paid media
         if is_in_store {
-            if self.enabled_channels.contains(&ActivationChannel::KioskDisplay) {
+            if self
+                .enabled_channels
+                .contains(&ActivationChannel::KioskDisplay)
+            {
                 return Some(ActivationChannel::KioskDisplay);
             }
-            if self.enabled_channels.contains(&ActivationChannel::DigitalSignage) {
+            if self
+                .enabled_channels
+                .contains(&ActivationChannel::DigitalSignage)
+            {
                 return Some(ActivationChannel::DigitalSignage);
             }
         }
@@ -97,10 +103,17 @@ impl ActivationDispatcher {
             }
         }
 
-        if has_push_token && self.enabled_channels.contains(&ActivationChannel::PushNotification) {
+        if has_push_token
+            && self
+                .enabled_channels
+                .contains(&ActivationChannel::PushNotification)
+        {
             return Some(ActivationChannel::PushNotification);
         }
-        if self.enabled_channels.contains(&ActivationChannel::InAppMessage) {
+        if self
+            .enabled_channels
+            .contains(&ActivationChannel::InAppMessage)
+        {
             return Some(ActivationChannel::InAppMessage);
         }
         if has_phone && self.enabled_channels.contains(&ActivationChannel::Sms) {
@@ -109,7 +122,10 @@ impl ActivationDispatcher {
         if has_email && self.enabled_channels.contains(&ActivationChannel::Email) {
             return Some(ActivationChannel::Email);
         }
-        if self.enabled_channels.contains(&ActivationChannel::WebPersonalization) {
+        if self
+            .enabled_channels
+            .contains(&ActivationChannel::WebPersonalization)
+        {
             return Some(ActivationChannel::WebPersonalization);
         }
 

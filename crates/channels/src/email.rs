@@ -76,11 +76,14 @@ impl SendGridProvider {
         });
 
         // Initialize analytics for this activation
-        self.analytics.entry(req.activation_id.clone()).or_insert_with(|| EmailAnalytics {
-            activation_id: req.activation_id.clone(),
-            total_sent: 0,
-            ..Default::default()
-        }).total_sent += 1;
+        self.analytics
+            .entry(req.activation_id.clone())
+            .or_insert_with(|| EmailAnalytics {
+                activation_id: req.activation_id.clone(),
+                total_sent: 0,
+                ..Default::default()
+            })
+            .total_sent += 1;
 
         let latency_ms = start.elapsed().as_millis() as u64;
         let sg_message_id = format!("sg-{}", uuid::Uuid::new_v4());
@@ -128,20 +131,16 @@ impl SendGridProvider {
                     }
                     EmailEventType::Open => {
                         a.opens += 1;
-                        let mut unique = self
-                            .unique_opens
-                            .entry(activation_id.clone())
-                            .or_default();
+                        let mut unique =
+                            self.unique_opens.entry(activation_id.clone()).or_default();
                         if unique.insert(event.email.clone()) {
                             a.unique_opens += 1;
                         }
                     }
                     EmailEventType::Click => {
                         a.clicks += 1;
-                        let mut unique = self
-                            .unique_clicks
-                            .entry(activation_id.clone())
-                            .or_default();
+                        let mut unique =
+                            self.unique_clicks.entry(activation_id.clone()).or_default();
                         if unique.insert(event.email.clone()) {
                             a.unique_clicks += 1;
                         }

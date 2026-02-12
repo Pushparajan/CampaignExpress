@@ -19,9 +19,7 @@ const DEV_TOKEN_PREFIX: &str = "ce_dev_";
 /// Validate a login request and return a bearer token.
 pub fn authenticate(req: &LoginRequest) -> Result<LoginResponse, String> {
     // Development: accept admin/admin or any user with password "campaign2024"
-    if (req.username == "admin" && req.password == "admin")
-        || req.password == "campaign2024"
-    {
+    if (req.username == "admin" && req.password == "admin") || req.password == "campaign2024" {
         let token = generate_token();
         Ok(LoginResponse {
             token,
@@ -40,7 +38,10 @@ fn generate_token() -> String {
     format!(
         "{}{}",
         DEV_TOKEN_PREFIX,
-        bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>()
+        bytes
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>()
     )
 }
 

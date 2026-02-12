@@ -72,7 +72,11 @@ impl CoLaNetModel {
                 "Model file not found, using synthetic weights for development"
             );
         } else {
-            info!(path = model_path, device = device, "Model file found, loading weights");
+            info!(
+                path = model_path,
+                device = device,
+                "Model file found, loading weights"
+            );
         }
 
         // Generate deterministic synthetic weights

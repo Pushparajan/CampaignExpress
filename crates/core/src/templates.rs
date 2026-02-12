@@ -1,8 +1,8 @@
 //! Message template rendering engine.
 
-use crate::types::{MessageTemplate, TemplateVariable, TemplateStatus};
-use std::collections::HashMap;
+use crate::types::{MessageTemplate, TemplateStatus, TemplateVariable};
 use chrono::Utc;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Simple template renderer using {{variable}} syntax
@@ -32,14 +32,21 @@ impl TemplateRenderer {
     }
 
     /// Render a template with the given variables
-    pub fn render(&self, template_id: &Uuid, variables: &HashMap<String, String>) -> Option<RenderedMessage> {
+    pub fn render(
+        &self,
+        template_id: &Uuid,
+        variables: &HashMap<String, String>,
+    ) -> Option<RenderedMessage> {
         let template = self.templates.get(template_id)?;
         if template.status != TemplateStatus::Active {
             return None;
         }
 
         let body = self.substitute(&template.body_template, variables, &template.variables);
-        let subject = template.subject.as_ref().map(|s| self.substitute(s, variables, &template.variables));
+        let subject = template
+            .subject
+            .as_ref()
+            .map(|s| self.substitute(s, variables, &template.variables));
 
         Some(RenderedMessage {
             template_id: *template_id,
@@ -50,11 +57,17 @@ impl TemplateRenderer {
         })
     }
 
-    fn substitute(&self, template_str: &str, variables: &HashMap<String, String>, var_defs: &[TemplateVariable]) -> String {
+    fn substitute(
+        &self,
+        template_str: &str,
+        variables: &HashMap<String, String>,
+        var_defs: &[TemplateVariable],
+    ) -> String {
         let mut result = template_str.to_string();
         for var_def in var_defs {
             let placeholder = format!("{{{{{}}}}}", var_def.name);
-            let value = variables.get(&var_def.name)
+            let value = variables
+                .get(&var_def.name)
                 .cloned()
                 .or_else(|| var_def.default_value.clone())
                 .unwrap_or_default();

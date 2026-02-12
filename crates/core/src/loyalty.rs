@@ -12,10 +12,13 @@ use serde::{Deserialize, Serialize};
 // ─── Tier System ────────────────────────────────────────────────────────────
 
 /// Loyalty tier levels with escalating benefits.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum LoyaltyTier {
     /// Entry-level. 1x earn rate. Base perks.
+    #[default]
     Green,
     /// 500 Stars in 12 months. 1.2x earn rate. Stars never expire.
     Gold,
@@ -63,12 +66,6 @@ impl LoyaltyTier {
             LoyaltyTier::Gold => 0.5,
             LoyaltyTier::Reserve => 1.0,
         }
-    }
-}
-
-impl Default for LoyaltyTier {
-    fn default() -> Self {
-        LoyaltyTier::Green
     }
 }
 
@@ -144,8 +141,7 @@ impl LoyaltyProfile {
 
     /// Days since last redemption (for SNN recency signal).
     pub fn days_since_redeem(&self) -> Option<i64> {
-        self.last_redeem
-            .map(|r| (Utc::now() - r).num_days())
+        self.last_redeem.map(|r| (Utc::now() - r).num_days())
     }
 
     /// Encode loyalty state as feature vector components for SNN input.
@@ -157,7 +153,11 @@ impl LoyaltyProfile {
             .days_since_redeem()
             .map(|d| 1.0 / (1.0 + d as f32 / 30.0))
             .unwrap_or(0.0);
-        let birthday_eligible = if self.is_birthday_eligible() { 1.0 } else { 0.0 };
+        let birthday_eligible = if self.is_birthday_eligible() {
+            1.0
+        } else {
+            0.0
+        };
         let channel = match self.preferred_channel {
             Some(LoyaltyChannel::InStore) => 0.0,
             Some(LoyaltyChannel::App) => 0.33,
