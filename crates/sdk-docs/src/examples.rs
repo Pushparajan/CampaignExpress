@@ -100,6 +100,56 @@ impl ExampleLibrary {
                 "Process incoming webhook events",
             ),
             ("Bulk User Import", "users", "Import users from CSV via API"),
+            (
+                "Submit for Approval",
+                "workflows",
+                "Submit a campaign for multi-step approval workflow",
+            ),
+            (
+                "Validate Brand Guidelines",
+                "brand",
+                "Check creative content against brand guidelines",
+            ),
+            (
+                "Get Budget Status",
+                "reporting",
+                "Retrieve budget pacing and ROAS for a campaign",
+            ),
+            (
+                "Generate Report",
+                "reporting",
+                "Build and export a custom report with filters",
+            ),
+            (
+                "Get Recommendations",
+                "personalization",
+                "Fetch personalized recommendations using collaborative filtering",
+            ),
+            (
+                "Create Suppression Entry",
+                "delivery",
+                "Add a user to the global suppression list",
+            ),
+            (
+                "Search DAM Assets",
+                "integrations",
+                "Search for creative assets across connected DAM platforms",
+            ),
+            (
+                "Push to Power BI",
+                "integrations",
+                "Push campaign analytics data to Power BI",
+            ),
+            (
+                "Create Jira Task",
+                "integrations",
+                "Create a Jira issue for campaign review tracking",
+            ),
+            (
+                "OfferFit Recommendation",
+                "ml",
+                "Get an RL-optimized offer recommendation from OfferFit",
+            ),
         ];
 
         for (title, category, desc) in code_examples {
@@ -223,6 +273,33 @@ impl ExampleLibrary {
                 "40%",
                 "8%",
                 "4%",
+            ),
+            (
+                "Approval Workflow",
+                "governance",
+                "Multi-step campaign approval flow",
+                25,
+                "N/A",
+                "N/A",
+                "95%",
+            ),
+            (
+                "Budget-Aware Campaign",
+                "finance",
+                "Campaign with budget pacing and ROAS alerts",
+                20,
+                "50%",
+                "10%",
+                "6%",
+            ),
+            (
+                "RL-Optimized Offers",
+                "ml",
+                "OfferFit reinforcement learning powered offers",
+                35,
+                "55%",
+                "15%",
+                "10%",
             ),
         ];
 

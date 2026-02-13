@@ -10,6 +10,7 @@
 7. [Monitoring & Observability](#monitoring--observability)
 8. [Scaling](#scaling)
 9. [Operations](#operations)
+10. [Infrastructure as Code (Terraform)](#infrastructure-as-code-terraform)
 
 ---
 
@@ -156,6 +157,54 @@ kubectl apply -f deploy/monitoring/prometheus/prometheus-deployment.yaml
 kubectl apply -f deploy/monitoring/grafana/grafana-deployment.yaml
 ```
 
+### 5a. Deploy AlertManager
+
+```bash
+kubectl apply -f deploy/monitoring/alertmanager/alertmanager-deployment.yaml
+kubectl apply -f deploy/monitoring/alertmanager/alertmanager-config.yaml
+kubectl apply -f deploy/monitoring/alertmanager/alert-rules.yaml
+```
+
+### 5b. Deploy Network Policies
+
+```bash
+kubectl apply -f deploy/k8s/base/network-policies.yaml
+```
+
+> **Note:** Applies default-deny ingress + 7 allow rules for inter-service communication
+
+### 5c. Deploy cert-manager
+
+```bash
+kubectl apply -f deploy/k8s/base/cert-manager.yaml
+```
+
+> **Note:** Sets up Let's Encrypt staging and production ClusterIssuers
+
+### 5d. Deploy External Secrets Operator
+
+```bash
+kubectl apply -f deploy/k8s/base/external-secrets.yaml
+```
+
+> **Note:** Integrates with Azure Key Vault for secret injection
+
+### 5e. Deploy Distributed Tracing (Tempo)
+
+```bash
+kubectl apply -f deploy/monitoring/tracing/tempo-deployment.yaml
+```
+
+> **Note:** Accepts OTLP and Jaeger protocols
+
+### 5f. Deploy Log Aggregation (Loki)
+
+```bash
+kubectl apply -f deploy/monitoring/logging/loki-stack.yaml
+```
+
+> **Note:** Deploys Loki + Promtail DaemonSet
+
 ### 6. Verify Deployment
 
 ```bash
@@ -263,6 +312,26 @@ CAMPAIGN_EXPRESS__DSP__ENABLED     # Enable DSP routing (default: false)
 RUST_LOG                           # Tracing filter (e.g., campaign_express=info)
 ```
 
+### Inference Provider Configuration
+
+The platform supports multiple hardware inference backends via the CoLaNetProvider trait:
+
+| Provider | Device | Max Batch | Use Case |
+|----------|--------|-----------|----------|
+| CPU | Standard x86/ARM | 32 | Development, staging |
+| AMD XDNA | Ryzen AI NPU | 64 | Default production |
+| Groq LPU | Groq Cloud | 64 | Low-latency cloud |
+| AWS Inferentia 2/3 | inf2/inf3 | 16/32 | AWS deployments |
+| Oracle Ampere Altra | ARM64 | 128 | ARM-native workloads |
+| Tenstorrent | RISC-V Mesh | 32 | Edge/custom silicon |
+
+Configure via environment:
+
+```bash
+CAMPAIGN_EXPRESS__NPU__PROVIDER=cpu    # or groq, inferentia2, inferentia3, ampere, tenstorrent
+CAMPAIGN_EXPRESS__NPU__DEVICE=cpu
+```
+
 ---
 
 ## Monitoring & Observability
@@ -292,6 +361,58 @@ The pre-built dashboard (`campaign-express-main`) includes:
 9. **Analytics Pipeline** — queued vs flushed vs dropped events
 
 Access Grafana: `http://<grafana-svc>:3000` (admin / campaign-express)
+
+### AlertManager
+
+AlertManager is deployed with 11 pre-configured alert rules covering:
+
+- **Throughput** — alerts when per-node offer rate drops below the 50M/hour target
+- **Latency** — fires when P99 bid response latency exceeds the SLA threshold
+- **Error Rates** — triggers on elevated API error ratios
+- **Cache Performance** — warns on L1/L2 cache hit rate degradation
+- **Analytics Pipeline Health** — detects dropped events or flush failures
+- **Resource Utilization** — alerts on high CPU and memory consumption
+- **Pod Availability** — fires when healthy pod count falls below minimum
+
+Deploy: `deploy/monitoring/alertmanager/`
+
+### Distributed Tracing (Tempo)
+
+Grafana Tempo provides distributed tracing for end-to-end request visibility.
+
+| Protocol | Port | Purpose |
+|----------|------|---------|
+| OTLP gRPC | 4317 | OpenTelemetry trace ingestion (gRPC) |
+| OTLP HTTP | 4318 | OpenTelemetry trace ingestion (HTTP) |
+| Jaeger Thrift | 14268 | Jaeger collector compatibility |
+| Jaeger UI | 16686 | Jaeger query/UI compatibility |
+
+Traces are queryable via the Grafana Explore panel using TraceQL.
+
+Deploy: `deploy/monitoring/tracing/`
+
+### Log Aggregation (Loki)
+
+Loki + Promtail provides centralized log aggregation across all cluster pods.
+
+- **Loki** — log storage and indexing backend
+- **Promtail DaemonSet** — runs on every node, tails container logs and ships to Loki
+
+Logs are queryable via the Grafana Explore panel using LogQL. All pod labels are automatically attached for filtering by namespace, deployment, pod, and container.
+
+Deploy: `deploy/monitoring/logging/`
+
+### cert-manager
+
+Automatic TLS certificate provisioning via Let's Encrypt. Both staging and production ClusterIssuers are configured, enabling automatic certificate lifecycle management (issuance, renewal, revocation) for all Ingress resources annotated with the appropriate issuer.
+
+Deploy: `deploy/k8s/base/cert-manager.yaml`
+
+### External Secrets
+
+Azure Key Vault integration for secret rotation. The External Secrets Operator syncs secrets from Azure Key Vault into Kubernetes Secret objects, enabling automatic secret injection into pods without storing sensitive values in manifests or source control.
+
+Deploy: `deploy/k8s/base/external-secrets.yaml`
 
 ### Key Alerts to Configure
 
@@ -398,3 +519,45 @@ kubectl port-forward svc/haproxy-ingress 8404:8404 -n campaign-express
 kubectl exec -it clickhouse-0 -n campaign-express -- \
   clickhouse-client -q "SELECT event_type, count() FROM analytics_events GROUP BY event_type"
 ```
+
+---
+
+## Infrastructure as Code (Terraform)
+
+Azure infrastructure is provisioned via Terraform in `deploy/terraform/azure/`.
+
+### Resources Provisioned
+
+| Resource | Type | Details |
+|----------|------|---------|
+| Resource Group | azurerm_resource_group | All Campaign Express resources |
+| VNet + Subnets | azurerm_virtual_network | AKS, Redis, and ClickHouse subnets |
+| AKS Cluster | azurerm_kubernetes_cluster | System pool (3x D4s_v5) |
+| Bidding Node Pool | azurerm_kubernetes_cluster_node_pool | D16s_v5 with NPU labels |
+| ClickHouse Node Pool | azurerm_kubernetes_cluster_node_pool | L8s_v3 storage-optimized |
+| Redis Premium | azurerm_redis_cache | 6 shards, 8GB max memory |
+| Container Registry | azurerm_container_registry | Premium with geo-replication |
+| Key Vault | azurerm_key_vault | Secret management |
+| Log Analytics | azurerm_log_analytics_workspace | Cluster monitoring |
+| ClickHouse Disks | azurerm_managed_disk | PremiumV2_LRS, 1TB each |
+
+### Usage
+
+```bash
+cd deploy/terraform/azure
+terraform init
+terraform plan -var="environment=prod" -var="primary_region=eastus2"
+terraform apply
+```
+
+### Key Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| project_name | campaign-express | Resource naming prefix |
+| environment | dev | dev/staging/prod |
+| primary_region | eastus2 | Azure region |
+| kubernetes_version | 1.28.5 | AKS version |
+| bidding_vm_size | Standard_D16s_v5 | Bidding pool VM |
+| clickhouse_vm_size | Standard_L8s_v3 | ClickHouse pool VM |
+| redis_capacity | 3 | Redis Premium tier |

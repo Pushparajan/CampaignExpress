@@ -112,6 +112,72 @@ impl ApiReferenceEngine {
              "Browse the plugin marketplace with filters and search."),
             ("POST", "/api/v1/plugins/{slug}/install", "Install Plugin", "plugins",
              "Install a plugin into the current workspace."),
+
+            // Workflows & Approvals
+            ("POST", "/api/v1/workflows/campaigns/{id}/submit", "Submit for Approval", "workflows",
+             "Submit a campaign for approval workflow processing."),
+            ("POST", "/api/v1/workflows/approvals/{id}/decide", "Record Approval Decision", "workflows",
+             "Record an approver's decision (approve/reject) on an approval request."),
+            ("GET", "/api/v1/workflows/approvals/pending/{user_id}", "Get Pending Approvals", "workflows",
+             "List all pending approval requests assigned to a user."),
+            ("GET", "/api/v1/workflows/calendar", "Campaign Calendar", "workflows",
+             "Get campaign calendar events within a date range."),
+
+            // Brand & Asset Library
+            ("GET", "/api/v1/brand/assets", "List Assets", "brand",
+             "List assets in the brand asset library with optional type and folder filters."),
+            ("POST", "/api/v1/brand/assets", "Upload Asset", "brand",
+             "Upload a new asset to the brand asset library with versioning."),
+            ("POST", "/api/v1/brand/validate", "Validate Brand Guidelines", "brand",
+             "Validate creative content against brand color, font, tone, and logo guidelines."),
+
+            // Budget & Reporting
+            ("GET", "/api/v1/reports/budget/{campaign_id}", "Get Budget Status", "reporting",
+             "Get budget tracking status including pacing, spend, and ROAS for a campaign."),
+            ("POST", "/api/v1/reports/generate", "Generate Report", "reporting",
+             "Generate a report using the report builder with filters, aggregations, and export format."),
+            ("GET", "/api/v1/reports/templates", "List Report Templates", "reporting",
+             "List available report templates (performance, channel, audience, revenue, etc)."),
+            ("GET", "/api/v1/reports/scheduled", "List Scheduled Reports", "reporting",
+             "List all scheduled report configurations."),
+
+            // Recommendations & Personalization
+            ("GET", "/api/v1/recommendations/{user_id}", "Get Recommendations", "personalization",
+             "Get personalized item recommendations for a user using CF, content-based, trending, or new arrivals strategies."),
+            ("POST", "/api/v1/recommendations/interactions", "Record Interaction", "personalization",
+             "Record a user-item interaction for recommendation model training."),
+            ("GET", "/api/v1/segments", "List Segments", "segmentation",
+             "List all audience segments with estimated sizes and criteria."),
+            ("POST", "/api/v1/segments", "Create Segment", "segmentation",
+             "Create a dynamic audience segment with rule-based criteria."),
+
+            // Suppression & Delivery
+            ("POST", "/api/v1/suppression/add", "Add to Suppression List", "delivery",
+             "Add a user identifier to the global suppression list with optional channel and expiry."),
+            ("GET", "/api/v1/suppression/check/{identifier}", "Check Suppression", "delivery",
+             "Check if a user identifier is suppressed for a given channel."),
+            ("DELETE", "/api/v1/suppression/{identifier}", "Remove from Suppression", "delivery",
+             "Remove a user identifier from the global suppression list."),
+
+            // OfferFit / RL Engine
+            ("POST", "/api/v1/offerfit/recommend", "Get OfferFit Recommendation", "ml",
+             "Get an optimized action recommendation from the OfferFit RL engine."),
+            ("POST", "/api/v1/offerfit/reward", "Send OfferFit Reward", "ml",
+             "Report an outcome reward signal back to OfferFit for model updates."),
+
+            // Integration Adaptors
+            ("POST", "/api/v1/integrations/tasks/create", "Create Task", "integrations",
+             "Create a review task in Asana or Jira for campaign approval tracking."),
+            ("GET", "/api/v1/integrations/dam/search", "Search DAM Assets", "integrations",
+             "Search digital assets across AEM Assets, Bynder, or Aprimo DAM platforms."),
+            ("POST", "/api/v1/integrations/bi/push", "Push to BI Tool", "integrations",
+             "Push campaign data to Power BI or generate Excel export."),
+
+            // Inference
+            ("GET", "/api/v1/inference/providers", "List Inference Providers", "inference",
+             "List available inference providers and their capabilities (CPU, Groq, Inferentia, Ampere, Tenstorrent)."),
+            ("POST", "/api/v1/inference/predict", "Run Inference", "inference",
+             "Run a prediction through the active inference provider with automatic batching."),
         ];
 
         for (method, path, summary, tag, description) in endpoints {

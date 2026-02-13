@@ -172,6 +172,102 @@ impl DocSearchEngine {
                 DocSection::Guides,
                 "/docs/guides/gdpr",
             ),
+            (
+                "Campaign Workflows",
+                "Multi-step approval workflows with role-based review",
+                DocSection::ApiReference,
+                "/docs/api/workflows",
+            ),
+            (
+                "Brand Guidelines",
+                "Enforce brand colors, fonts, tone, and logo usage",
+                DocSection::ApiReference,
+                "/docs/api/brand",
+            ),
+            (
+                "Budget Tracking",
+                "Campaign budget pacing, ROAS, and spend alerts",
+                DocSection::ApiReference,
+                "/docs/api/budget",
+            ),
+            (
+                "Report Builder",
+                "Custom reports with CSV/JSON export and scheduling",
+                DocSection::ApiReference,
+                "/docs/api/reports",
+            ),
+            (
+                "Recommendations",
+                "Personalized recommendations via CF, content-based, and trending strategies",
+                DocSection::ApiReference,
+                "/docs/api/recommendations",
+            ),
+            (
+                "Suppression Lists",
+                "Global per-channel suppression with automatic expiry",
+                DocSection::ApiReference,
+                "/docs/api/suppression",
+            ),
+            (
+                "OfferFit Integration",
+                "Reinforcement learning optimization via OfferFit connector",
+                DocSection::Integrations,
+                "/docs/integrations/offerfit",
+            ),
+            (
+                "Asana Integration",
+                "Create tasks in Asana from campaign workflows",
+                DocSection::Integrations,
+                "/docs/integrations/asana",
+            ),
+            (
+                "Jira Integration",
+                "Create issues in Jira from campaign workflows",
+                DocSection::Integrations,
+                "/docs/integrations/jira",
+            ),
+            (
+                "DAM Integration",
+                "Connect AEM Assets, Bynder, or Aprimo for asset management",
+                DocSection::Integrations,
+                "/docs/integrations/dam",
+            ),
+            (
+                "Power BI Integration",
+                "Push campaign data to Power BI dashboards",
+                DocSection::Integrations,
+                "/docs/integrations/powerbi",
+            ),
+            (
+                "Excel Export",
+                "Generate Excel reports from campaign data",
+                DocSection::Integrations,
+                "/docs/integrations/excel",
+            ),
+            (
+                "Inference Providers",
+                "Hardware-agnostic inference with Groq, Inferentia, Ampere, Tenstorrent",
+                DocSection::ApiReference,
+                "/docs/api/inference",
+            ),
+            (
+                "Inference Provider Guide",
+                "Configure hardware backends for optimal inference performance",
+                DocSection::Guides,
+                "/docs/guides/inference-providers",
+            ),
+            (
+                "Workflow Guide",
+                "Set up campaign approval workflows",
+                DocSection::Guides,
+                "/docs/guides/workflows",
+            ),
+            (
+                "Brand Guidelines Guide",
+                "Configure brand enforcement for creatives",
+                DocSection::Guides,
+                "/docs/guides/brand",
+            ),
         ];
 
         for (title, desc, section, url) in docs {
