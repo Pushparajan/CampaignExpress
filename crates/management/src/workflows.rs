@@ -653,7 +653,17 @@ mod tests {
     #[test]
     fn test_approval_request_multiple_approvers() {
         let engine = WorkflowEngine::new();
-        engine.seed_default_rules();
+        // Add only a single rule with min_approvals=1 so the test is deterministic.
+        engine.add_approval_rule(ApprovalRule {
+            id: Uuid::new_v4(),
+            name: "Standard Campaign".to_string(),
+            required_role: "manager".to_string(),
+            min_approvals: 1,
+            auto_approve_below_budget: Some(1000.0),
+            require_creative_review: false,
+            require_legal_review: false,
+            channels: vec![],
+        });
 
         let campaign = Uuid::new_v4();
         let requester = Uuid::new_v4();

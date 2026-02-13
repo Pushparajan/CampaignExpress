@@ -3,6 +3,7 @@ pub mod config;
 pub mod dsp;
 pub mod error;
 pub mod experimentation;
+pub mod inference;
 pub mod journey;
 pub mod loyalty;
 pub mod openrtb;
