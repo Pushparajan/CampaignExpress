@@ -77,6 +77,14 @@ CampaignExpress/
 └── docs/                     # Deployment & architecture guides
 ```
 
+## Documentation
+
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - Comprehensive end-to-end architecture documentation covering all modules, data flows, infrastructure, and integrations
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
+- **[Local Deployment](docs/LOCAL_DEPLOYMENT.md)** - Local development environment setup
+- **[Request Flow](docs/REQUEST_FLOW.md)** - Detailed request processing flow
+- **[Prerequisites](docs/PREREQUISITES.md)** - Installation prerequisites for each platform
+
 ## Quick Start
 
 ### Prerequisites
