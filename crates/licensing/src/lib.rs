@@ -3,6 +3,8 @@
 //! Licenses are HMAC-SHA256 signed JSON payloads encoded as `<base64-payload>.<base64-signature>`.
 //! An admin tool generates license files; the runtime `LicenseGuard` validates and gates modules.
 
+pub mod dashboard;
+
 use chrono::{DateTime, Utc};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
