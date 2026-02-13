@@ -234,10 +234,7 @@ mod tests {
             "https://example.com/products"
         );
         assert_eq!(events[0]["params"]["page_title"], "Products");
-        assert_eq!(
-            events[0]["params"]["page_referrer"],
-            "https://google.com"
-        );
+        assert_eq!(events[0]["params"]["page_referrer"], "https://google.com");
     }
 
     #[test]

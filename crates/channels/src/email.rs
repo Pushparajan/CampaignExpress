@@ -140,12 +140,8 @@ impl SendGridProvider {
             _ => None,
         };
         if let Some(et) = event_type {
-            self.event_sink.emit(make_event(
-                et,
-                &activation_id,
-                None,
-                None,
-            ));
+            self.event_sink
+                .emit(make_event(et, &activation_id, None, None));
         }
 
         self.analytics

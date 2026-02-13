@@ -213,12 +213,8 @@ impl SmsProvider {
             _ => None,
         };
         if let Some(et) = event_type {
-            self.event_sink.emit(make_event(
-                et,
-                message_id.to_string(),
-                None,
-                None,
-            ));
+            self.event_sink
+                .emit(make_event(et, message_id.to_string(), None, None));
         }
 
         true

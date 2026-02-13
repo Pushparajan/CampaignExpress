@@ -320,7 +320,11 @@ impl DashboardEngine {
     }
 
     pub fn list_installations(&self) -> Vec<Installation> {
-        let mut list: Vec<_> = self.installations.iter().map(|e| e.value().clone()).collect();
+        let mut list: Vec<_> = self
+            .installations
+            .iter()
+            .map(|e| e.value().clone())
+            .collect();
         list.sort_by(|a, b| a.tenant_name.cmp(&b.tenant_name));
         list
     }
@@ -342,9 +346,9 @@ impl DashboardEngine {
     }
 
     pub fn get_latest_usage(&self, installation_id: Uuid) -> Option<UsageSnapshot> {
-        self.usage.get(&installation_id).and_then(|snaps| {
-            snaps.iter().max_by_key(|s| s.captured_at).cloned()
-        })
+        self.usage
+            .get(&installation_id)
+            .and_then(|snaps| snaps.iter().max_by_key(|s| s.captured_at).cloned())
     }
 
     pub fn get_usage_history(&self, installation_id: Uuid) -> Vec<UsageSnapshot> {
@@ -375,9 +379,7 @@ impl DashboardEngine {
         let now = Utc::now();
         self.invoices
             .iter()
-            .filter(|e| {
-                e.value().status == InvoiceStatus::Open && e.value().due_at < now
-            })
+            .filter(|e| e.value().status == InvoiceStatus::Open && e.value().due_at < now)
             .map(|e| e.value().clone())
             .collect()
     }
@@ -385,7 +387,12 @@ impl DashboardEngine {
     pub fn get_pending_invoices(&self) -> Vec<BillingInvoice> {
         self.invoices
             .iter()
-            .filter(|e| matches!(e.value().status, InvoiceStatus::Open | InvoiceStatus::PastDue))
+            .filter(|e| {
+                matches!(
+                    e.value().status,
+                    InvoiceStatus::Open | InvoiceStatus::PastDue
+                )
+            })
             .map(|e| e.value().clone())
             .collect()
     }
@@ -452,7 +459,12 @@ impl DashboardEngine {
         let pending_payments_cents: u64 = self
             .invoices
             .iter()
-            .filter(|e| matches!(e.value().status, InvoiceStatus::Open | InvoiceStatus::PastDue))
+            .filter(|e| {
+                matches!(
+                    e.value().status,
+                    InvoiceStatus::Open | InvoiceStatus::PastDue
+                )
+            })
             .map(|e| e.value().total_cents)
             .sum();
 
@@ -637,13 +649,48 @@ impl DashboardEngine {
             installation_id: acme_id,
             period: "2026-02".into(),
             entries: vec![
-                UsageEntry { meter: UsageMeter::OffersServed, quantity: 38_500_000, quota: Some(50_000_000), unit_price_cents: 0 },
-                UsageEntry { meter: UsageMeter::ApiCalls, quantity: 12_400_000, quota: Some(20_000_000), unit_price_cents: 0 },
-                UsageEntry { meter: UsageMeter::ActiveCampaigns, quantity: 47, quota: None, unit_price_cents: 500 },
-                UsageEntry { meter: UsageMeter::StorageGb, quantity: 128, quota: Some(500), unit_price_cents: 10 },
-                UsageEntry { meter: UsageMeter::JourneyExecutions, quantity: 2_300_000, quota: None, unit_price_cents: 0 },
-                UsageEntry { meter: UsageMeter::DcoRenders, quantity: 8_700_000, quota: None, unit_price_cents: 0 },
-                UsageEntry { meter: UsageMeter::SmsMessages, quantity: 450_000, quota: Some(1_000_000), unit_price_cents: 1 },
+                UsageEntry {
+                    meter: UsageMeter::OffersServed,
+                    quantity: 38_500_000,
+                    quota: Some(50_000_000),
+                    unit_price_cents: 0,
+                },
+                UsageEntry {
+                    meter: UsageMeter::ApiCalls,
+                    quantity: 12_400_000,
+                    quota: Some(20_000_000),
+                    unit_price_cents: 0,
+                },
+                UsageEntry {
+                    meter: UsageMeter::ActiveCampaigns,
+                    quantity: 47,
+                    quota: None,
+                    unit_price_cents: 500,
+                },
+                UsageEntry {
+                    meter: UsageMeter::StorageGb,
+                    quantity: 128,
+                    quota: Some(500),
+                    unit_price_cents: 10,
+                },
+                UsageEntry {
+                    meter: UsageMeter::JourneyExecutions,
+                    quantity: 2_300_000,
+                    quota: None,
+                    unit_price_cents: 0,
+                },
+                UsageEntry {
+                    meter: UsageMeter::DcoRenders,
+                    quantity: 8_700_000,
+                    quota: None,
+                    unit_price_cents: 0,
+                },
+                UsageEntry {
+                    meter: UsageMeter::SmsMessages,
+                    quantity: 450_000,
+                    quota: Some(1_000_000),
+                    unit_price_cents: 1,
+                },
             ],
             captured_at: now,
         });
@@ -652,11 +699,36 @@ impl DashboardEngine {
             installation_id: globex_id,
             period: "2026-02".into(),
             entries: vec![
-                UsageEntry { meter: UsageMeter::OffersServed, quantity: 7_200_000, quota: Some(10_000_000), unit_price_cents: 0 },
-                UsageEntry { meter: UsageMeter::ApiCalls, quantity: 3_100_000, quota: Some(5_000_000), unit_price_cents: 0 },
-                UsageEntry { meter: UsageMeter::ActiveCampaigns, quantity: 18, quota: None, unit_price_cents: 500 },
-                UsageEntry { meter: UsageMeter::StorageGb, quantity: 42, quota: Some(200), unit_price_cents: 10 },
-                UsageEntry { meter: UsageMeter::CdpSyncs, quantity: 85_000, quota: None, unit_price_cents: 0 },
+                UsageEntry {
+                    meter: UsageMeter::OffersServed,
+                    quantity: 7_200_000,
+                    quota: Some(10_000_000),
+                    unit_price_cents: 0,
+                },
+                UsageEntry {
+                    meter: UsageMeter::ApiCalls,
+                    quantity: 3_100_000,
+                    quota: Some(5_000_000),
+                    unit_price_cents: 0,
+                },
+                UsageEntry {
+                    meter: UsageMeter::ActiveCampaigns,
+                    quantity: 18,
+                    quota: None,
+                    unit_price_cents: 500,
+                },
+                UsageEntry {
+                    meter: UsageMeter::StorageGb,
+                    quantity: 42,
+                    quota: Some(200),
+                    unit_price_cents: 10,
+                },
+                UsageEntry {
+                    meter: UsageMeter::CdpSyncs,
+                    quantity: 85_000,
+                    quota: None,
+                    unit_price_cents: 0,
+                },
             ],
             captured_at: now,
         });
@@ -665,9 +737,24 @@ impl DashboardEngine {
             installation_id: initech_id,
             period: "2026-02".into(),
             entries: vec![
-                UsageEntry { meter: UsageMeter::OffersServed, quantity: 620_000, quota: Some(1_000_000), unit_price_cents: 0 },
-                UsageEntry { meter: UsageMeter::ApiCalls, quantity: 180_000, quota: Some(500_000), unit_price_cents: 0 },
-                UsageEntry { meter: UsageMeter::ActiveCampaigns, quantity: 5, quota: None, unit_price_cents: 500 },
+                UsageEntry {
+                    meter: UsageMeter::OffersServed,
+                    quantity: 620_000,
+                    quota: Some(1_000_000),
+                    unit_price_cents: 0,
+                },
+                UsageEntry {
+                    meter: UsageMeter::ApiCalls,
+                    quantity: 180_000,
+                    quota: Some(500_000),
+                    unit_price_cents: 0,
+                },
+                UsageEntry {
+                    meter: UsageMeter::ActiveCampaigns,
+                    quantity: 5,
+                    quota: None,
+                    unit_price_cents: 500,
+                },
             ],
             captured_at: now,
         });
@@ -676,17 +763,47 @@ impl DashboardEngine {
         // Acme: 3 months of invoices
         for month_offset in [2, 1, 0] {
             let issued = now - Duration::days(month_offset * 30);
-            let status = if month_offset > 0 { InvoiceStatus::Paid } else { InvoiceStatus::Open };
-            let paid_at = if month_offset > 0 { Some(issued + Duration::days(15)) } else { None };
+            let status = if month_offset > 0 {
+                InvoiceStatus::Paid
+            } else {
+                InvoiceStatus::Open
+            };
+            let paid_at = if month_offset > 0 {
+                Some(issued + Duration::days(15))
+            } else {
+                None
+            };
             self.create_invoice(BillingInvoice {
                 invoice_id: Uuid::new_v4(),
                 installation_id: acme_id,
                 tenant_name: "Acme Corp".into(),
-                period: format!("2026-{:02}", if month_offset == 0 { 2 } else { 2 - month_offset }),
+                period: format!(
+                    "2026-{:02}",
+                    if month_offset == 0 {
+                        2
+                    } else {
+                        2 - month_offset
+                    }
+                ),
                 line_items: vec![
-                    LineItem { description: "Enterprise License".into(), quantity: 1, unit_price_cents: 199_900, total_cents: 199_900 },
-                    LineItem { description: "NPU Node Pack (20 nodes)".into(), quantity: 20, unit_price_cents: 5_000, total_cents: 100_000 },
-                    LineItem { description: "SMS Messages".into(), quantity: 450_000, unit_price_cents: 1, total_cents: 450_000 },
+                    LineItem {
+                        description: "Enterprise License".into(),
+                        quantity: 1,
+                        unit_price_cents: 199_900,
+                        total_cents: 199_900,
+                    },
+                    LineItem {
+                        description: "NPU Node Pack (20 nodes)".into(),
+                        quantity: 20,
+                        unit_price_cents: 5_000,
+                        total_cents: 100_000,
+                    },
+                    LineItem {
+                        description: "SMS Messages".into(),
+                        quantity: 450_000,
+                        unit_price_cents: 1,
+                        total_cents: 450_000,
+                    },
                 ],
                 subtotal_cents: 749_900,
                 tax_cents: 67_491,
@@ -706,8 +823,18 @@ impl DashboardEngine {
             tenant_name: "Globex Inc".into(),
             period: "2025-12".into(),
             line_items: vec![
-                LineItem { description: "Professional License".into(), quantity: 1, unit_price_cents: 49_900, total_cents: 49_900 },
-                LineItem { description: "Node Pack (8 nodes)".into(), quantity: 8, unit_price_cents: 5_000, total_cents: 40_000 },
+                LineItem {
+                    description: "Professional License".into(),
+                    quantity: 1,
+                    unit_price_cents: 49_900,
+                    total_cents: 49_900,
+                },
+                LineItem {
+                    description: "Node Pack (8 nodes)".into(),
+                    quantity: 8,
+                    unit_price_cents: 5_000,
+                    total_cents: 40_000,
+                },
             ],
             subtotal_cents: 89_900,
             tax_cents: 8_091,
@@ -726,8 +853,18 @@ impl DashboardEngine {
             tenant_name: "Globex Inc".into(),
             period: "2026-01".into(),
             line_items: vec![
-                LineItem { description: "Professional License".into(), quantity: 1, unit_price_cents: 49_900, total_cents: 49_900 },
-                LineItem { description: "Node Pack (8 nodes)".into(), quantity: 8, unit_price_cents: 5_000, total_cents: 40_000 },
+                LineItem {
+                    description: "Professional License".into(),
+                    quantity: 1,
+                    unit_price_cents: 49_900,
+                    total_cents: 49_900,
+                },
+                LineItem {
+                    description: "Node Pack (8 nodes)".into(),
+                    quantity: 8,
+                    unit_price_cents: 5_000,
+                    total_cents: 40_000,
+                },
             ],
             subtotal_cents: 89_900,
             tax_cents: 8_091,
@@ -747,8 +884,18 @@ impl DashboardEngine {
             tenant_name: "Initech".into(),
             period: "2026-01".into(),
             line_items: vec![
-                LineItem { description: "Starter License".into(), quantity: 1, unit_price_cents: 9_900, total_cents: 9_900 },
-                LineItem { description: "Node Pack (2 nodes)".into(), quantity: 2, unit_price_cents: 5_000, total_cents: 10_000 },
+                LineItem {
+                    description: "Starter License".into(),
+                    quantity: 1,
+                    unit_price_cents: 9_900,
+                    total_cents: 9_900,
+                },
+                LineItem {
+                    description: "Node Pack (2 nodes)".into(),
+                    quantity: 2,
+                    unit_price_cents: 5_000,
+                    total_cents: 10_000,
+                },
             ],
             subtotal_cents: 19_900,
             tax_cents: 1_791,

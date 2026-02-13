@@ -2,9 +2,8 @@
 //! and manage the billing dashboard.
 
 use campaign_licensing::{
-    License, LicenseKey, LicenseTier, LicenseType, LicensedModule,
     dashboard::{DashboardEngine, InvoiceStatus, PaymentStatus},
-    sign_license, verify_license,
+    sign_license, verify_license, License, LicenseKey, LicenseTier, LicenseType, LicensedModule,
 };
 use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
@@ -309,7 +308,10 @@ fn cmd_verify(key: String, license: String) {
             println!("  Type:             {:?}", lic.license_type);
             println!("  Tier:             {:?}", lic.tier);
             println!("  Max nodes:        {}", lic.max_nodes);
-            println!("  Max offers/hr:    {}", format_number(lic.max_offers_per_hour));
+            println!(
+                "  Max offers/hr:    {}",
+                format_number(lic.max_offers_per_hour)
+            );
             println!(
                 "  Issued at:        {}",
                 lic.issued_at.format("%Y-%m-%d %H:%M UTC")
@@ -398,8 +400,14 @@ fn dashboard_overview(engine: &DashboardEngine) {
     println!("    Nodes:      {}", overview.total_nodes);
     println!();
     println!("  Revenue");
-    println!("    Total collected:   ${}", format_cents(overview.total_revenue_cents));
-    println!("    Pending payments:  ${}", format_cents(overview.pending_payments_cents));
+    println!(
+        "    Total collected:   ${}",
+        format_cents(overview.total_revenue_cents)
+    );
+    println!(
+        "    Pending payments:  ${}",
+        format_cents(overview.pending_payments_cents)
+    );
     println!("    Overdue invoices:  {}", overview.overdue_invoices);
     println!();
     println!("  Module Adoption");
@@ -471,7 +479,10 @@ fn dashboard_installation_detail(engine: &DashboardEngine, id_str: &str) {
     println!("  Status:           {}", inst.status);
     println!("  Region:           {}", inst.region);
     println!("  Environment:      {}", inst.environment);
-    println!("  Nodes:            {}/{}", inst.node_count, inst.license.max_nodes);
+    println!(
+        "  Nodes:            {}/{}",
+        inst.node_count, inst.license.max_nodes
+    );
     println!("  Tier:             {:?}", inst.license.tier);
     println!("  License type:     {:?}", inst.license.license_type);
     println!(
@@ -508,10 +519,7 @@ fn dashboard_installation_detail(engine: &DashboardEngine, id_str: &str) {
         );
         println!("    {}", "-".repeat(65));
         for entry in &usage.entries {
-            let quota_str = entry
-                .quota
-                .map(format_number)
-                .unwrap_or_else(|| "-".into());
+            let quota_str = entry.quota.map(format_number).unwrap_or_else(|| "-".into());
             let pct_str = if entry.quota.is_some() {
                 format!("{:.1}%", entry.usage_percent())
             } else {
@@ -619,11 +627,7 @@ fn dashboard_usage(engine: &DashboardEngine) {
                         )
                     })
                     .unwrap_or_else(|| format_number(entry.quantity));
-                println!(
-                    "    {:<25} {}",
-                    entry.meter.as_str(),
-                    quota_str,
-                );
+                println!("    {:<25} {}", entry.meter.as_str(), quota_str,);
             }
             println!();
         }
@@ -827,7 +831,12 @@ fn format_cents(cents: u64) -> String {
     let dollars = cents / 100;
     let remainder = cents % 100;
     if dollars >= 1_000 {
-        format!("{},{:03}.{:02}", dollars / 1_000, dollars % 1_000, remainder)
+        format!(
+            "{},{:03}.{:02}",
+            dollars / 1_000,
+            dollars % 1_000,
+            remainder
+        )
     } else {
         format!("{dollars}.{remainder:02}")
     }

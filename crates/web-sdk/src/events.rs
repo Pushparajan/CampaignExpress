@@ -127,10 +127,7 @@ mod tests {
             anonymous_id: "anon-abc".into(),
             session_id: Uuid::new_v4(),
             name: Some("cta_button".into()),
-            properties: HashMap::from([(
-                "element_tag".to_string(),
-                serde_json::json!("button"),
-            )]),
+            properties: HashMap::from([("element_tag".to_string(), serde_json::json!("button"))]),
             context: WebContext {
                 user_agent: "Mozilla/5.0".into(),
                 language: "en-US".into(),
