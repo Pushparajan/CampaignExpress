@@ -143,18 +143,12 @@ pub fn management_router() -> Router {
             get(handlers::get_onboarding),
         )
         // Ops
-        .route(
-            "/api/v1/management/ops/status",
-            get(handlers::ops_status),
-        )
+        .route("/api/v1/management/ops/status", get(handlers::ops_status))
         .route(
             "/api/v1/management/ops/incidents",
             get(handlers::list_incidents),
         )
-        .route(
-            "/api/v1/management/ops/sla",
-            get(handlers::sla_report),
-        )
+        .route("/api/v1/management/ops/sla", get(handlers::sla_report))
         .route(
             "/api/v1/management/ops/backups",
             get(handlers::list_backups),

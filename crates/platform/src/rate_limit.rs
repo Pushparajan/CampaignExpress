@@ -91,7 +91,8 @@ impl RateLimiter {
             entry.count += 1;
             entry.minute_count += 1;
 
-            let remaining = (second_limit - entry.count).min(config.requests_per_minute - entry.minute_count);
+            let remaining =
+                (second_limit - entry.count).min(config.requests_per_minute - entry.minute_count);
             RateLimitResult {
                 allowed: true,
                 remaining,

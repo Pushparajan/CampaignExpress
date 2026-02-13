@@ -130,10 +130,7 @@ impl MeteringEngine {
             period_end: now,
             recorded_at: now,
         };
-        self.records
-            .entry(tenant_id)
-            .or_default()
-            .push(record);
+        self.records.entry(tenant_id).or_default().push(record);
     }
 
     /// Build a usage summary for the given tenant and period label.
@@ -240,10 +237,7 @@ mod tests {
             engine.get_current_usage(tenant, &MeterType::OffersServed),
             8000
         );
-        assert_eq!(
-            engine.get_current_usage(tenant, &MeterType::ApiCalls),
-            1000
-        );
+        assert_eq!(engine.get_current_usage(tenant, &MeterType::ApiCalls), 1000);
         assert!(engine.check_quota(tenant, &MeterType::OffersServed, 10_000));
         assert!(!engine.check_quota(tenant, &MeterType::OffersServed, 5000));
     }

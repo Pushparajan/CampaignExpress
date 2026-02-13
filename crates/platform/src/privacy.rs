@@ -63,11 +63,7 @@ impl Default for AnonymizationConfig {
                 "phone".into(),
                 "ip_address".into(),
             ],
-            fields_to_remove: vec![
-                "ssn".into(),
-                "credit_card".into(),
-                "password".into(),
-            ],
+            fields_to_remove: vec!["ssn".into(), "credit_card".into(), "password".into()],
             retention_days: 365,
         }
     }

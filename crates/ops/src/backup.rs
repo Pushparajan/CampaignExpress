@@ -98,7 +98,11 @@ impl BackupManager {
                 size_bytes: 1_048_576 * 50, // simulated 50 MB
                 started_at: now,
                 completed_at: Some(now + Duration::seconds(30)),
-                storage_path: format!("{}/backup-{}.tar.gz", schedule.storage_path, now.timestamp()),
+                storage_path: format!(
+                    "{}/backup-{}.tar.gz",
+                    schedule.storage_path,
+                    now.timestamp()
+                ),
                 error: None,
             };
             self.records.insert(record.id, record.clone());
@@ -111,7 +115,8 @@ impl BackupManager {
     }
 
     pub fn list_backups(&self) -> Vec<BackupRecord> {
-        let mut records: Vec<BackupRecord> = self.records.iter().map(|r| r.value().clone()).collect();
+        let mut records: Vec<BackupRecord> =
+            self.records.iter().map(|r| r.value().clone()).collect();
         records.sort_by(|a, b| b.started_at.cmp(&a.started_at));
         records
     }
@@ -132,7 +137,12 @@ impl BackupManager {
 
         let targets = vec![
             (BackupTarget::Redis, "0 2 * * *", 30, "/backups/redis"),
-            (BackupTarget::ClickHouse, "0 3 * * *", 90, "/backups/clickhouse"),
+            (
+                BackupTarget::ClickHouse,
+                "0 3 * * *",
+                90,
+                "/backups/clickhouse",
+            ),
             (BackupTarget::Configs, "0 0 * * *", 365, "/backups/configs"),
             (BackupTarget::Models, "0 4 * * 0", 60, "/backups/models"),
         ];
@@ -159,7 +169,11 @@ impl BackupManager {
                 size_bytes: 1_048_576 * 120,
                 started_at: now - Duration::hours(12),
                 completed_at: Some(now - Duration::hours(12) + Duration::minutes(5)),
-                storage_path: format!("{}/backup-{}.tar.gz", path, (now - Duration::hours(12)).timestamp()),
+                storage_path: format!(
+                    "{}/backup-{}.tar.gz",
+                    path,
+                    (now - Duration::hours(12)).timestamp()
+                ),
                 error: None,
             };
             self.records.insert(record.id, record);

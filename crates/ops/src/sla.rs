@@ -146,7 +146,14 @@ impl SlaTracker {
         // Seed some uptime records
         for i in 0..24 {
             let check_time = now - Duration::hours(i);
-            for service in &["API Gateway", "Bidding Engine", "NATS Cluster", "Redis Cluster", "ClickHouse", "NPU Engine"] {
+            for service in &[
+                "API Gateway",
+                "Bidding Engine",
+                "NATS Cluster",
+                "Redis Cluster",
+                "ClickHouse",
+                "NPU Engine",
+            ] {
                 let record = UptimeRecord {
                     id: Uuid::new_v4(),
                     service: service.to_string(),
@@ -173,11 +180,7 @@ mod tests {
     #[test]
     fn test_sla_tracking() {
         let tracker = SlaTracker::new();
-        let target = tracker.register_target(
-            "Test Service".to_string(),
-            99.9,
-            "30d".to_string(),
-        );
+        let target = tracker.register_target("Test Service".to_string(), 99.9, "30d".to_string());
         assert_eq!(target.current_percent, 100.0);
         assert!(target.last_incident.is_none());
 

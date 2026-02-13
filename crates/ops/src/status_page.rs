@@ -132,7 +132,8 @@ impl StatusPageManager {
     }
 
     pub fn list_updates(&self) -> Vec<StatusUpdate> {
-        let mut updates: Vec<StatusUpdate> = self.updates.iter().map(|r| r.value().clone()).collect();
+        let mut updates: Vec<StatusUpdate> =
+            self.updates.iter().map(|r| r.value().clone()).collect();
         updates.sort_by(|a, b| b.created_at.cmp(&a.created_at));
         updates
     }
@@ -142,12 +143,36 @@ impl StatusPageManager {
 
         let components = vec![
             ("API Gateway", "REST and gRPC API endpoint", "Core Services"),
-            ("Bidding Engine", "Real-time bid processing pipeline", "Core Services"),
-            ("NATS Cluster", "Message queue for bid distribution", "Infrastructure"),
-            ("Redis Cluster", "Distributed caching layer", "Infrastructure"),
-            ("ClickHouse", "Analytics and reporting database", "Infrastructure"),
-            ("NPU Engine", "Neural processing unit inference engine", "ML Pipeline"),
-            ("Management UI", "Campaign management dashboard", "User Facing"),
+            (
+                "Bidding Engine",
+                "Real-time bid processing pipeline",
+                "Core Services",
+            ),
+            (
+                "NATS Cluster",
+                "Message queue for bid distribution",
+                "Infrastructure",
+            ),
+            (
+                "Redis Cluster",
+                "Distributed caching layer",
+                "Infrastructure",
+            ),
+            (
+                "ClickHouse",
+                "Analytics and reporting database",
+                "Infrastructure",
+            ),
+            (
+                "NPU Engine",
+                "Neural processing unit inference engine",
+                "ML Pipeline",
+            ),
+            (
+                "Management UI",
+                "Campaign management dashboard",
+                "User Facing",
+            ),
         ];
 
         for (name, description, group) in components {

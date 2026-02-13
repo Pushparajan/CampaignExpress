@@ -105,7 +105,8 @@ impl OnboardingEngine {
             OnboardingStep {
                 id: "first_campaign".into(),
                 title: "Create First Campaign".into(),
-                description: "Launch your first ad campaign using a template or from scratch".into(),
+                description: "Launch your first ad campaign using a template or from scratch"
+                    .into(),
                 status: OnboardingStatus::NotStarted,
                 order: 3,
                 required: true,
@@ -133,7 +134,8 @@ impl OnboardingEngine {
             OnboardingStep {
                 id: "install_pixel".into(),
                 title: "Install Tracking Pixel".into(),
-                description: "Add the CampaignExpress pixel to your website for conversion tracking".into(),
+                description:
+                    "Add the CampaignExpress pixel to your website for conversion tracking".into(),
                 status: OnboardingStatus::NotStarted,
                 order: 6,
                 required: true,
@@ -163,11 +165,7 @@ impl OnboardingEngine {
     }
 
     /// Mark a step as completed and recalculate the overall completion percent.
-    pub fn complete_step(
-        &self,
-        tenant_id: Uuid,
-        step_id: &str,
-    ) -> Option<OnboardingProgress> {
+    pub fn complete_step(&self, tenant_id: Uuid, step_id: &str) -> Option<OnboardingProgress> {
         self.progress.get_mut(&tenant_id).map(|mut prog| {
             let now = Utc::now();
 
@@ -184,8 +182,7 @@ impl OnboardingEngine {
                 .steps
                 .iter()
                 .filter(|s| {
-                    s.status == OnboardingStatus::Completed
-                        || s.status == OnboardingStatus::Skipped
+                    s.status == OnboardingStatus::Completed || s.status == OnboardingStatus::Skipped
                 })
                 .count() as f64;
             prog.completion_percent = if total > 0.0 {
@@ -195,14 +192,9 @@ impl OnboardingEngine {
             };
 
             // Mark overall complete if all required steps are done
-            let all_required_done = prog
-                .steps
-                .iter()
-                .filter(|s| s.required)
-                .all(|s| {
-                    s.status == OnboardingStatus::Completed
-                        || s.status == OnboardingStatus::Skipped
-                });
+            let all_required_done = prog.steps.iter().filter(|s| s.required).all(|s| {
+                s.status == OnboardingStatus::Completed || s.status == OnboardingStatus::Skipped
+            });
             if all_required_done && prog.completed_at.is_none() {
                 prog.completed_at = Some(now);
             }
@@ -242,8 +234,8 @@ impl OnboardingEngine {
             CampaignTemplate {
                 id: Uuid::new_v4(),
                 name: "Brand Awareness".into(),
-                description:
-                    "Broad reach campaign to build brand recognition with new audiences".into(),
+                description: "Broad reach campaign to build brand recognition with new audiences"
+                    .into(),
                 category: "awareness".into(),
                 config: serde_json::json!({
                     "objective": "reach",
@@ -349,7 +341,11 @@ mod tests {
 
         // Complete account_setup
         let progress = engine.complete_step(tenant, "account_setup").unwrap();
-        let step = progress.steps.iter().find(|s| s.id == "account_setup").unwrap();
+        let step = progress
+            .steps
+            .iter()
+            .find(|s| s.id == "account_setup")
+            .unwrap();
         assert_eq!(step.status, OnboardingStatus::Completed);
         assert!(step.completed_at.is_some());
         assert!(progress.completion_percent > 0.0);

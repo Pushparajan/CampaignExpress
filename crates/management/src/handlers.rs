@@ -316,17 +316,13 @@ pub async fn create_experiment(
 
 // ─── Platform: Tenants ──────────────────────────────────────────────────
 
-pub async fn list_tenants(
-    State(state): State<ManagementState>,
-) -> Json<Vec<serde_json::Value>> {
+pub async fn list_tenants(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {
     Json(state.store.list_tenants())
 }
 
 // ─── Platform: Roles ────────────────────────────────────────────────────
 
-pub async fn list_roles(
-    State(state): State<ManagementState>,
-) -> Json<Vec<serde_json::Value>> {
+pub async fn list_roles(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {
     Json(state.store.list_roles())
 }
 
@@ -340,17 +336,13 @@ pub async fn compliance_status(
 
 // ─── Platform: Privacy / DSRs ───────────────────────────────────────────
 
-pub async fn list_dsrs(
-    State(state): State<ManagementState>,
-) -> Json<Vec<serde_json::Value>> {
+pub async fn list_dsrs(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {
     Json(state.store.list_dsrs())
 }
 
 // ─── Billing: Plans ─────────────────────────────────────────────────────
 
-pub async fn list_plans(
-    State(state): State<ManagementState>,
-) -> Json<Vec<serde_json::Value>> {
+pub async fn list_plans(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {
     Json(state.store.list_plans())
 }
 
@@ -369,9 +361,7 @@ pub async fn get_subscription(
 
 // ─── Billing: Invoices ──────────────────────────────────────────────────
 
-pub async fn list_invoices(
-    State(state): State<ManagementState>,
-) -> Json<Vec<serde_json::Value>> {
+pub async fn list_invoices(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {
     Json(state.store.list_invoices())
 }
 
@@ -395,32 +385,24 @@ pub async fn get_onboarding(
 
 // ─── Ops: Status Page ───────────────────────────────────────────────────
 
-pub async fn ops_status(
-    State(state): State<ManagementState>,
-) -> Json<serde_json::Value> {
+pub async fn ops_status(State(state): State<ManagementState>) -> Json<serde_json::Value> {
     Json(state.store.get_status_page())
 }
 
 // ─── Ops: Incidents ─────────────────────────────────────────────────────
 
-pub async fn list_incidents(
-    State(state): State<ManagementState>,
-) -> Json<Vec<serde_json::Value>> {
+pub async fn list_incidents(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {
     Json(state.store.list_incidents())
 }
 
 // ─── Ops: SLA ───────────────────────────────────────────────────────────
 
-pub async fn sla_report(
-    State(state): State<ManagementState>,
-) -> Json<serde_json::Value> {
+pub async fn sla_report(State(state): State<ManagementState>) -> Json<serde_json::Value> {
     Json(state.store.get_sla_report())
 }
 
 // ─── Ops: Backups ───────────────────────────────────────────────────────
 
-pub async fn list_backups(
-    State(state): State<ManagementState>,
-) -> Json<Vec<serde_json::Value>> {
+pub async fn list_backups(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {
     Json(state.store.list_backups())
 }

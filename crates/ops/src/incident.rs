@@ -153,7 +153,8 @@ impl IncidentManager {
     }
 
     pub fn list_incidents(&self) -> Vec<Incident> {
-        let mut incidents: Vec<Incident> = self.incidents.iter().map(|r| r.value().clone()).collect();
+        let mut incidents: Vec<Incident> =
+            self.incidents.iter().map(|r| r.value().clone()).collect();
         incidents.sort_by(|a, b| b.created_at.cmp(&a.created_at));
         incidents
     }
@@ -188,13 +189,15 @@ impl IncidentManager {
         let high_latency_runbook = Runbook {
             id: Uuid::new_v4(),
             name: "High Latency Response".to_string(),
-            description: "Steps to diagnose and resolve high latency in the bidding pipeline".to_string(),
+            description: "Steps to diagnose and resolve high latency in the bidding pipeline"
+                .to_string(),
             severity: IncidentSeverity::Major,
             steps: vec![
                 RunbookStep {
                     order: 1,
                     action: "Check Prometheus dashboard for latency spike patterns".to_string(),
-                    expected_result: "Identify which service(s) are contributing to latency".to_string(),
+                    expected_result: "Identify which service(s) are contributing to latency"
+                        .to_string(),
                     escalation_if_failed: Some("Contact on-call SRE".to_string()),
                 },
                 RunbookStep {
@@ -206,8 +209,11 @@ impl IncidentManager {
                 RunbookStep {
                     order: 3,
                     action: "Check Redis cluster memory and connection pool usage".to_string(),
-                    expected_result: "Memory usage below 80%, connections below pool limit".to_string(),
-                    escalation_if_failed: Some("Flush expired keys or scale Redis shards".to_string()),
+                    expected_result: "Memory usage below 80%, connections below pool limit"
+                        .to_string(),
+                    escalation_if_failed: Some(
+                        "Flush expired keys or scale Redis shards".to_string(),
+                    ),
                 },
                 RunbookStep {
                     order: 4,
@@ -224,7 +230,8 @@ impl IncidentManager {
             ],
             created_at: now - Duration::days(30),
         };
-        self.runbooks.insert(high_latency_runbook.id, high_latency_runbook);
+        self.runbooks
+            .insert(high_latency_runbook.id, high_latency_runbook);
 
         // Runbook 2: Node Failure Recovery
         let node_failure_runbook = Runbook {
@@ -237,13 +244,17 @@ impl IncidentManager {
                     order: 1,
                     action: "Verify node status via kubectl get nodes".to_string(),
                     expected_result: "Identify failed node(s) in NotReady state".to_string(),
-                    escalation_if_failed: Some("Check cloud provider console for VM status".to_string()),
+                    escalation_if_failed: Some(
+                        "Check cloud provider console for VM status".to_string(),
+                    ),
                 },
                 RunbookStep {
                     order: 2,
                     action: "Check if pods have been rescheduled to healthy nodes".to_string(),
                     expected_result: "All bidding engine pods running on healthy nodes".to_string(),
-                    escalation_if_failed: Some("Manually cordon failed node and trigger reschedule".to_string()),
+                    escalation_if_failed: Some(
+                        "Manually cordon failed node and trigger reschedule".to_string(),
+                    ),
                 },
                 RunbookStep {
                     order: 3,
@@ -255,12 +266,15 @@ impl IncidentManager {
                     order: 4,
                     action: "Monitor bid throughput and error rates for 15 minutes".to_string(),
                     expected_result: "Throughput restored to pre-incident levels".to_string(),
-                    escalation_if_failed: Some("Engage infrastructure team for node replacement".to_string()),
+                    escalation_if_failed: Some(
+                        "Engage infrastructure team for node replacement".to_string(),
+                    ),
                 },
             ],
             created_at: now - Duration::days(15),
         };
-        self.runbooks.insert(node_failure_runbook.id, node_failure_runbook);
+        self.runbooks
+            .insert(node_failure_runbook.id, node_failure_runbook);
     }
 }
 

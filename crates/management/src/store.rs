@@ -1180,11 +1180,8 @@ impl ManagementStore {
     }
 
     pub fn get_sla_report(&self) -> serde_json::Value {
-        let targets: Vec<serde_json::Value> = self
-            .sla_targets
-            .iter()
-            .map(|r| r.value().clone())
-            .collect();
+        let targets: Vec<serde_json::Value> =
+            self.sla_targets.iter().map(|r| r.value().clone()).collect();
         serde_json::json!({
             "report_period": "2026-02",
             "targets": targets,
@@ -1207,7 +1204,12 @@ impl ManagementStore {
         let tiers = vec![
             ("Acme Corp", "acme-corp", "active", "professional"),
             ("StartupXYZ", "startupxyz", "trial", "starter"),
-            ("Enterprise Global", "enterprise-global", "active", "enterprise"),
+            (
+                "Enterprise Global",
+                "enterprise-global",
+                "active",
+                "enterprise",
+            ),
         ];
         for (name, slug, status, tier) in tiers {
             let id = Uuid::new_v4();
@@ -1241,8 +1243,13 @@ impl ManagementStore {
                 "Campaign Manager",
                 "Create, edit, and manage campaigns and creatives",
                 vec![
-                    "campaign_read", "campaign_write", "campaign_delete",
-                    "creative_read", "creative_write", "journey_read", "journey_write",
+                    "campaign_read",
+                    "campaign_write",
+                    "campaign_delete",
+                    "creative_read",
+                    "creative_write",
+                    "journey_read",
+                    "journey_write",
                     "analytics_read",
                 ],
                 true,
@@ -1257,8 +1264,13 @@ impl ManagementStore {
                 "Viewer",
                 "Read-only access to all resources",
                 vec![
-                    "campaign_read", "creative_read", "journey_read",
-                    "experiment_read", "dco_read", "cdp_read", "analytics_read",
+                    "campaign_read",
+                    "creative_read",
+                    "journey_read",
+                    "experiment_read",
+                    "dco_read",
+                    "cdp_read",
+                    "analytics_read",
                 ],
                 true,
             ),
@@ -1320,10 +1332,54 @@ impl ManagementStore {
         let now = Utc::now();
         // Plans
         let plans_data = vec![
-            ("Free", "free", 0.0, 0.0, 1000u64, 10_000u64, vec!["Basic campaigns", "Email channel"]),
-            ("Starter", "starter", 99.0, 990.0, 100_000, 100_000, vec!["Multi-channel", "Basic journeys", "5 users"]),
-            ("Professional", "professional", 499.0, 4990.0, 5_000_000, 500_000, vec!["All channels", "Advanced journeys", "DCO", "Experiments", "25 users"]),
-            ("Enterprise", "enterprise", 1999.0, 19990.0, 0, 0, vec!["Unlimited everything", "Dedicated support", "SLA guarantee", "Custom integrations", "SSO/SAML"]),
+            (
+                "Free",
+                "free",
+                0.0,
+                0.0,
+                1000u64,
+                10_000u64,
+                vec!["Basic campaigns", "Email channel"],
+            ),
+            (
+                "Starter",
+                "starter",
+                99.0,
+                990.0,
+                100_000,
+                100_000,
+                vec!["Multi-channel", "Basic journeys", "5 users"],
+            ),
+            (
+                "Professional",
+                "professional",
+                499.0,
+                4990.0,
+                5_000_000,
+                500_000,
+                vec![
+                    "All channels",
+                    "Advanced journeys",
+                    "DCO",
+                    "Experiments",
+                    "25 users",
+                ],
+            ),
+            (
+                "Enterprise",
+                "enterprise",
+                1999.0,
+                19990.0,
+                0,
+                0,
+                vec![
+                    "Unlimited everything",
+                    "Dedicated support",
+                    "SLA guarantee",
+                    "Custom integrations",
+                    "SSO/SAML",
+                ],
+            ),
         ];
         for (name, tier, monthly, annual, offers, api_calls, features) in plans_data {
             let id = Uuid::new_v4();
@@ -1376,13 +1432,48 @@ impl ManagementStore {
         let now = Utc::now();
         // Status components
         let components = vec![
-            ("API Gateway", "All endpoints responding normally", "operational", "Core"),
-            ("Bidding Engine", "Processing bids at target throughput", "operational", "Core"),
-            ("NATS Cluster", "Message queue healthy", "operational", "Infrastructure"),
-            ("Redis Cluster", "Cache layer operational", "operational", "Infrastructure"),
-            ("ClickHouse", "Analytics DB accepting writes", "operational", "Infrastructure"),
-            ("NPU Engine", "ML inference operational", "operational", "Core"),
-            ("Management UI", "Dashboard accessible", "operational", "Frontend"),
+            (
+                "API Gateway",
+                "All endpoints responding normally",
+                "operational",
+                "Core",
+            ),
+            (
+                "Bidding Engine",
+                "Processing bids at target throughput",
+                "operational",
+                "Core",
+            ),
+            (
+                "NATS Cluster",
+                "Message queue healthy",
+                "operational",
+                "Infrastructure",
+            ),
+            (
+                "Redis Cluster",
+                "Cache layer operational",
+                "operational",
+                "Infrastructure",
+            ),
+            (
+                "ClickHouse",
+                "Analytics DB accepting writes",
+                "operational",
+                "Infrastructure",
+            ),
+            (
+                "NPU Engine",
+                "ML inference operational",
+                "operational",
+                "Core",
+            ),
+            (
+                "Management UI",
+                "Dashboard accessible",
+                "operational",
+                "Frontend",
+            ),
         ];
         for (name, desc, status, group) in components {
             let id = Uuid::new_v4();
