@@ -28,6 +28,7 @@ members = [
     "crates/plugin-marketplace",
     "crates/sdk-docs",
     "crates/licensing",
+    "crates/web-sdk",
     "src/campaign-express",
     "src/license-admin",
 ]
@@ -117,6 +118,7 @@ campaign-rl-engine = { path = "crates/rl-engine" }
 campaign-plugin-marketplace = { path = "crates/plugin-marketplace" }
 campaign-sdk-docs = { path = "crates/sdk-docs" }
 campaign-licensing = { path = "crates/licensing" }
+campaign-web-sdk = { path = "crates/web-sdk" }
 
 [profile.release]
 opt-level = 3
