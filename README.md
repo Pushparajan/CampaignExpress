@@ -75,6 +75,8 @@ CampaignExpress/
 │   ├── clickhouse/           # Analytics DB StatefulSet
 │   └── monitoring/           # Prometheus, Grafana, AlertManager, Tempo, Loki
 └── docs/                     # Deployment & architecture guides
+    ├── MARKETER_GUIDE.md     # User guide for campaign managers and marketers
+    └── ...
 ```
 
 ## Documentation
@@ -94,6 +96,8 @@ CampaignExpress/
 - Node.js 18+ and npm (for the management UI)
 
 > **First time?** See [docs/PREREQUISITES.md](docs/PREREQUISITES.md) for detailed installation instructions for each platform.
+> 
+> **For Marketers:** See [docs/MARKETER_GUIDE.md](docs/MARKETER_GUIDE.md) for a comprehensive guide on creating campaigns, managing creatives, and using all marketer-facing features.
 
 ### Docker Compose (full stack)
 
