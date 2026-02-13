@@ -843,8 +843,13 @@ fn format_cents(cents: u64) -> String {
 }
 
 fn truncate(s: &str, max: usize) -> String {
-    if s.len() > max {
-        format!("{}..", &s[..max - 2])
+    if max < 3 {
+        return s.chars().take(max).collect();
+    }
+    let char_count = s.chars().count();
+    if char_count > max {
+        let truncated: String = s.chars().take(max - 2).collect();
+        format!("{truncated}..")
     } else {
         s.to_string()
     }
