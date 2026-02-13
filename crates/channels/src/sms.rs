@@ -1,9 +1,12 @@
 //! Twilio SMS provider — send, track, and manage SMS messages with
 //! segment calculation, delivery callbacks, and bulk send support.
 
+use campaign_core::event_bus::{make_event, EventSink};
+use campaign_core::types::EventType;
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use uuid::Uuid;
 
 /// Configuration for the Twilio SMS provider.
@@ -60,6 +63,7 @@ pub struct SmsProvider {
     provider_index: DashMap<String, Uuid>,
     /// Delivery events keyed by recipient phone number.
     delivery_events: DashMap<String, Vec<SmsDeliveryEvent>>,
+    event_sink: Arc<dyn EventSink>,
 }
 
 impl SmsProvider {
@@ -75,7 +79,14 @@ impl SmsProvider {
             messages: DashMap::new(),
             provider_index: DashMap::new(),
             delivery_events: DashMap::new(),
+            event_sink: campaign_core::event_bus::noop_sink(),
         }
+    }
+
+    /// Attach an event sink for emitting analytics events.
+    pub fn with_event_sink(mut self, sink: Arc<dyn EventSink>) -> Self {
+        self.event_sink = sink;
+        self
     }
 
     /// Send an SMS message. Simulates the Twilio API call and returns the
@@ -108,6 +119,14 @@ impl SmsProvider {
         );
 
         metrics::counter!("sms.messages_sent").increment(1);
+
+        // Emit ActivationSent event
+        self.event_sink.emit(make_event(
+            EventType::ActivationSent,
+            id.to_string(),
+            None,
+            None,
+        ));
 
         self.messages.insert(id, msg.clone());
         self.provider_index.insert(provider_id, id);
@@ -186,6 +205,17 @@ impl SmsProvider {
             "status" => status.to_string()
         )
         .increment(1);
+
+        // Emit delivery event to analytics pipeline
+        let event_type = match status {
+            "delivered" => Some(EventType::ActivationDelivered),
+            "failed" | "undelivered" => Some(EventType::ActivationFailed),
+            _ => None,
+        };
+        if let Some(et) = event_type {
+            self.event_sink
+                .emit(make_event(et, message_id.to_string(), None, None));
+        }
 
         true
     }

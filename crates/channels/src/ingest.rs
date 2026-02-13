@@ -1,13 +1,18 @@
 //! Ingest processor — consumes real-time events from omnichannel sources
 //! via NATS queue subscriptions and transforms them into internal events.
+//! Emits `EventType::ChannelIngest` on every processed event.
 
 use campaign_core::channels::*;
+use campaign_core::event_bus::{make_event, EventSink};
+use campaign_core::types::EventType;
 use chrono::Utc;
+use std::sync::Arc;
 use tracing::{debug, info};
 
 /// Processes ingest events from all source channels.
 pub struct IngestProcessor {
     enabled_sources: Vec<IngestSource>,
+    event_sink: Arc<dyn EventSink>,
 }
 
 impl IngestProcessor {
@@ -18,7 +23,14 @@ impl IngestProcessor {
         );
         Self {
             enabled_sources: sources,
+            event_sink: campaign_core::event_bus::noop_sink(),
         }
+    }
+
+    /// Attach an event sink for emitting analytics events.
+    pub fn with_event_sink(mut self, sink: Arc<dyn EventSink>) -> Self {
+        self.event_sink = sink;
+        self
     }
 
     /// Process a raw ingest event: validate, enrich, and route.
@@ -58,6 +70,14 @@ impl IngestProcessor {
             should_activate = should_activate,
             "Ingest event processed"
         );
+
+        // Emit ChannelIngest event to analytics pipeline
+        self.event_sink.emit(make_event(
+            EventType::ChannelIngest,
+            &event.event_id,
+            Some(user_id.clone()),
+            None,
+        ));
 
         Ok(ProcessedIngest {
             event_id: event.event_id.clone(),

@@ -7,6 +7,9 @@ use dashmap::DashMap;
 use tracing::info;
 use uuid::Uuid;
 
+use campaign_core::event_bus::{make_event, EventSink};
+use campaign_core::types::EventType;
+
 use crate::assembler::CreativeAssembler;
 use crate::scorer::VariantScorer;
 use crate::types::{
@@ -15,11 +18,20 @@ use crate::types::{
 };
 
 /// Core DCO engine — manages templates, assembles creatives, and scores them.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct DcoEngine {
     templates: Arc<DashMap<Uuid, DcoTemplate>>,
     assembler: CreativeAssembler,
     scorer: VariantScorer,
+    event_sink: Arc<dyn EventSink>,
+}
+
+impl std::fmt::Debug for DcoEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DcoEngine")
+            .field("templates", &self.templates.len())
+            .finish()
+    }
 }
 
 impl DcoEngine {
@@ -29,7 +41,14 @@ impl DcoEngine {
             templates: Arc::new(DashMap::new()),
             assembler: CreativeAssembler::new(),
             scorer: VariantScorer::new(),
+            event_sink: campaign_core::event_bus::noop_sink(),
         }
+    }
+
+    /// Attach an event sink for emitting analytics events.
+    pub fn with_event_sink(mut self, sink: Arc<dyn EventSink>) -> Self {
+        self.event_sink = sink;
+        self
     }
 
     /// Register (or overwrite) a template in the store. Returns the template id.
@@ -110,6 +129,14 @@ impl DcoEngine {
             "score_and_assemble complete"
         );
 
+        // Emit DcoAssembly event
+        self.event_sink.emit(make_event(
+            EventType::DcoAssembly,
+            request.template_id.to_string(),
+            None,
+            None,
+        ));
+
         Ok(DcoScoreResponse {
             assembled_creatives: top_k,
             total_combinations,
@@ -159,6 +186,23 @@ impl DcoEngine {
                                 }
                             }
                             template.updated_at = Utc::now();
+
+                            // Emit DCO outcome event
+                            let dco_event = match outcome {
+                                "impression" => Some(EventType::DcoImpression),
+                                "click" => Some(EventType::DcoClick),
+                                "conversion" => Some(EventType::DcoConversion),
+                                _ => None,
+                            };
+                            if let Some(et) = dco_event {
+                                self.event_sink.emit(make_event(
+                                    et,
+                                    template_id.to_string(),
+                                    None,
+                                    None,
+                                ));
+                            }
+
                             info!(
                                 %template_id,
                                 %component_id,

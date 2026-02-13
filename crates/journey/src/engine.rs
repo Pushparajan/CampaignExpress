@@ -7,6 +7,9 @@ use dashmap::DashMap;
 use tracing::info;
 use uuid::Uuid;
 
+use campaign_core::event_bus::{make_event, EventSink};
+use campaign_core::types::EventType;
+
 use crate::evaluator::{JourneyEvaluator, StepResult};
 use crate::types::{
     ActionType, DecisionBranch, DecisionConfig, ExitConfig, InstanceStatus, Journey,
@@ -15,11 +18,21 @@ use crate::types::{
 };
 
 /// Core orchestration engine — manages journey definitions and user instances.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct JourneyEngine {
     journeys: Arc<DashMap<Uuid, Journey>>,
     instances: Arc<DashMap<Uuid, JourneyInstance>>,
     evaluator: Arc<JourneyEvaluator>,
+    event_sink: Arc<dyn EventSink>,
+}
+
+impl std::fmt::Debug for JourneyEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JourneyEngine")
+            .field("journeys", &self.journeys.len())
+            .field("instances", &self.instances.len())
+            .finish()
+    }
 }
 
 impl JourneyEngine {
@@ -29,7 +42,14 @@ impl JourneyEngine {
             journeys: Arc::new(DashMap::new()),
             instances: Arc::new(DashMap::new()),
             evaluator: Arc::new(JourneyEvaluator::new()),
+            event_sink: campaign_core::event_bus::noop_sink(),
         }
+    }
+
+    /// Attach an event sink for emitting analytics events.
+    pub fn with_event_sink(mut self, sink: Arc<dyn EventSink>) -> Self {
+        self.event_sink = sink;
+        self
     }
 
     /// Stores a journey and returns its id.
@@ -109,6 +129,14 @@ impl JourneyEngine {
             "User entered journey"
         );
 
+        // Emit JourneyEntered event
+        self.event_sink.emit(make_event(
+            EventType::JourneyEntered,
+            instance_id.to_string(),
+            Some(user_id.to_string()),
+            None,
+        ));
+
         self.instances.insert(instance_id, instance);
         Ok(instance_id)
     }
@@ -157,6 +185,8 @@ impl JourneyEngine {
         });
 
         // Advance instance based on result.
+        let user_id = instance.user_id.clone();
+        let inst_id = instance.id;
         match &result {
             StepResult::ExecuteAction { next_step, .. } => {
                 if let Some(next) = next_step {
@@ -186,6 +216,20 @@ impl JourneyEngine {
         }
 
         instance.updated_at = now;
+
+        // Emit journey step event
+        let event_type = match instance.status {
+            InstanceStatus::Completed => EventType::JourneyCompleted,
+            InstanceStatus::Error => EventType::JourneyExited,
+            _ => EventType::JourneyStepCompleted,
+        };
+        self.event_sink.emit(make_event(
+            event_type,
+            inst_id.to_string(),
+            Some(user_id),
+            None,
+        ));
+
         Ok(result)
     }
 

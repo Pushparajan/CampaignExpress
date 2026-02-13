@@ -7,6 +7,9 @@ use dashmap::DashMap;
 use tracing::info;
 use uuid::Uuid;
 
+use campaign_core::event_bus::{make_event, EventSink};
+use campaign_core::types::EventType;
+
 use crate::adapters::create_adapter;
 use crate::types::{
     AudienceExport, CdpConfig, CdpPlatform, CdpProfile, CdpWebhookPayload, SyncDirection,
@@ -17,6 +20,7 @@ use crate::types::{
 pub struct CdpSyncEngine {
     configs: Arc<DashMap<String, CdpConfig>>,
     sync_history: Arc<DashMap<Uuid, SyncEvent>>,
+    event_sink: Arc<dyn EventSink>,
 }
 
 impl Default for CdpSyncEngine {
@@ -31,7 +35,14 @@ impl CdpSyncEngine {
         Self {
             configs: Arc::new(DashMap::new()),
             sync_history: Arc::new(DashMap::new()),
+            event_sink: campaign_core::event_bus::noop_sink(),
         }
+    }
+
+    /// Attach an event sink for emitting analytics events.
+    pub fn with_event_sink(mut self, sink: Arc<dyn EventSink>) -> Self {
+        self.event_sink = sink;
+        self
     }
 
     /// Register a CDP platform with the given configuration.
@@ -121,6 +132,14 @@ impl CdpSyncEngine {
             "processed inbound webhook"
         );
 
+        // Emit CdpSyncInbound event
+        self.event_sink.emit(make_event(
+            EventType::CdpSyncInbound,
+            event.id.to_string(),
+            None,
+            None,
+        ));
+
         self.sync_history.insert(event.id, event.clone());
         Ok(event)
     }
@@ -183,6 +202,14 @@ impl CdpSyncEngine {
             record_count = record_count,
             "prepared outbound sync"
         );
+
+        // Emit CdpSyncOutbound event
+        self.event_sink.emit(make_event(
+            EventType::CdpSyncOutbound,
+            event.id.to_string(),
+            None,
+            None,
+        ));
 
         self.sync_history.insert(event.id, event.clone());
         Ok(event)

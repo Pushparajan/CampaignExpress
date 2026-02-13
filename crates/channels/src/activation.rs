@@ -1,14 +1,19 @@
 //! Activation dispatcher — delivers personalized offers/messages to users
 //! across multiple output channels (push, SMS, email, paid media, in-store).
+//! Emits `ActivationSent`, `ActivationDelivered`, or `ActivationFailed` events.
 
 use campaign_core::channels::*;
+use campaign_core::event_bus::{make_event, EventSink};
+use campaign_core::types::EventType;
 use chrono::Utc;
+use std::sync::Arc;
 use tracing::{debug, info};
 use uuid::Uuid;
 
 /// Dispatches activation messages to the appropriate output channel.
 pub struct ActivationDispatcher {
     enabled_channels: Vec<ActivationChannel>,
+    event_sink: Arc<dyn EventSink>,
 }
 
 impl ActivationDispatcher {
@@ -19,12 +24,26 @@ impl ActivationDispatcher {
         );
         Self {
             enabled_channels: channels,
+            event_sink: campaign_core::event_bus::noop_sink(),
         }
+    }
+
+    /// Attach an event sink for emitting analytics events.
+    pub fn with_event_sink(mut self, sink: Arc<dyn EventSink>) -> Self {
+        self.event_sink = sink;
+        self
     }
 
     /// Dispatch an activation to the target channel.
     pub async fn dispatch(&self, request: &ActivationRequest) -> ActivationResult {
         if !self.enabled_channels.contains(&request.channel) {
+            self.event_sink.emit(make_event(
+                EventType::ActivationFailed,
+                &request.activation_id,
+                Some(request.user_id.clone()),
+                Some(request.offer_id.clone()),
+            ));
+
             return ActivationResult {
                 activation_id: request.activation_id.clone(),
                 channel: request.channel,
@@ -65,6 +84,19 @@ impl ActivationDispatcher {
             "channel" => request.channel.display_name()
         )
         .record(latency_ms as f64);
+
+        // Emit event based on activation result status
+        let event_type = match result.status {
+            ActivationStatus::Delivered => EventType::ActivationDelivered,
+            ActivationStatus::Failed => EventType::ActivationFailed,
+            _ => EventType::ActivationSent,
+        };
+        self.event_sink.emit(make_event(
+            event_type,
+            &request.activation_id,
+            Some(request.user_id.clone()),
+            Some(request.offer_id.clone()),
+        ));
 
         ActivationResult {
             latency_ms,
@@ -135,7 +167,6 @@ impl ActivationDispatcher {
     // ─── Channel-specific senders (stubs for production integration) ────────
 
     async fn send_push(&self, req: &ActivationRequest) -> ActivationResult {
-        // In production: call Firebase Cloud Messaging / APNs
         debug!(user_id = %req.user_id, "Sending push notification");
         ActivationResult {
             activation_id: req.activation_id.clone(),
@@ -149,7 +180,6 @@ impl ActivationDispatcher {
     }
 
     async fn send_sms(&self, req: &ActivationRequest) -> ActivationResult {
-        // In production: call Twilio / AWS SNS
         debug!(user_id = %req.user_id, "Sending SMS");
         ActivationResult {
             activation_id: req.activation_id.clone(),
@@ -163,7 +193,6 @@ impl ActivationDispatcher {
     }
 
     async fn send_email(&self, req: &ActivationRequest) -> ActivationResult {
-        // In production: call SendGrid / AWS SES
         debug!(user_id = %req.user_id, "Sending email");
         ActivationResult {
             activation_id: req.activation_id.clone(),
@@ -177,7 +206,6 @@ impl ActivationDispatcher {
     }
 
     async fn send_in_app(&self, req: &ActivationRequest) -> ActivationResult {
-        // In production: publish to user's in-app message queue
         debug!(user_id = %req.user_id, "Sending in-app message");
         ActivationResult {
             activation_id: req.activation_id.clone(),
@@ -191,7 +219,6 @@ impl ActivationDispatcher {
     }
 
     async fn send_web(&self, req: &ActivationRequest) -> ActivationResult {
-        // In production: push to web personalization engine
         debug!(user_id = %req.user_id, "Sending web personalization");
         ActivationResult {
             activation_id: req.activation_id.clone(),
@@ -205,7 +232,6 @@ impl ActivationDispatcher {
     }
 
     async fn send_paid_media(&self, req: &ActivationRequest) -> ActivationResult {
-        // In production: add user to DSP audience segment via API
         debug!(
             user_id = %req.user_id,
             channel = ?req.channel,
@@ -223,7 +249,6 @@ impl ActivationDispatcher {
     }
 
     async fn send_in_store(&self, req: &ActivationRequest) -> ActivationResult {
-        // In production: push to in-store display management system
         debug!(
             user_id = %req.user_id,
             channel = ?req.channel,

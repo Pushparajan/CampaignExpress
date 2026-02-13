@@ -3,6 +3,8 @@
 //! Licenses are HMAC-SHA256 signed JSON payloads encoded as `<base64-payload>.<base64-signature>`.
 //! An admin tool generates license files; the runtime `LicenseGuard` validates and gates modules.
 
+pub mod dashboard;
+
 use chrono::{DateTime, Utc};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
@@ -339,8 +341,7 @@ pub fn sign_license(license: &License, key: &LicenseKey) -> Result<String, Licen
     let payload_json = serde_json::to_vec(license)?;
     let payload_b64 = engine.encode(&payload_json);
 
-    let mut mac =
-        HmacSha256::new_from_slice(&key.bytes).expect("HMAC accepts any key length");
+    let mut mac = HmacSha256::new_from_slice(&key.bytes).expect("HMAC accepts any key length");
     mac.update(payload_json.as_slice());
     let signature = mac.finalize().into_bytes();
     let sig_b64 = engine.encode(signature);
@@ -362,8 +363,7 @@ pub fn verify_license(license_file: &str, key: &LicenseKey) -> Result<License, L
     let signature = engine.decode(parts[1])?;
 
     // Verify HMAC
-    let mut mac =
-        HmacSha256::new_from_slice(&key.bytes).expect("HMAC accepts any key length");
+    let mut mac = HmacSha256::new_from_slice(&key.bytes).expect("HMAC accepts any key length");
     mac.update(&payload_json);
     mac.verify_slice(&signature)
         .map_err(|_| LicenseError::SignatureInvalid)?;

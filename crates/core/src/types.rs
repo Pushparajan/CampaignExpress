@@ -145,6 +145,14 @@ pub enum EventType {
     // Template events
     TemplateRendered,
     TemplateDelivered,
+    // Web SDK events
+    WebPageView,
+    WebClick,
+    WebFormSubmit,
+    WebScroll,
+    WebCustomEvent,
+    WebSessionStart,
+    WebSessionEnd,
 }
 
 /// Internal message envelope for NATS inter-agent communication.
