@@ -41,6 +41,13 @@ spec:
                       values:
                         - campaign-express
                 topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 80
+              preference:
+                matchExpressions:
+                  - key: amd.com/xdna
+                    operator: Exists
       containers:
         - name: campaign-express
           image: campaign-express:latest
@@ -71,7 +78,7 @@ spec:
               cpu: "4"
               memory: "8Gi"
               # AMD XDNA NPU resource (requires device plugin)
-              # amd.com/xdna: "1"
+              amd.com/xdna: "1"
           readinessProbe:
             httpGet:
               path: /ready

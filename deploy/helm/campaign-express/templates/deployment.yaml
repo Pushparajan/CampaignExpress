@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "campaign-express.fullname" . }}
+  labels:
+    {{- include "campaign-express.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "campaign-express.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 2
+      maxSurge: 3
+  template:
+    metadata:
+      labels:
+        {{- include "campaign-express.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.config.metricsPort | quote }}
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: {{ include "campaign-express.serviceAccountName" . }}
+      terminationGracePeriodSeconds: 30
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.config.httpPort }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.config.grpcPort }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.config.metricsPort }}
+              protocol: TCP
+          env:
+            - name: CAMPAIGN_EXPRESS__NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CAMPAIGN_EXPRESS__AGENTS_PER_NODE
+              value: {{ .Values.config.agentsPerNode | quote }}
+            - name: CAMPAIGN_EXPRESS__API__HOST
+              value: {{ .Values.config.apiHost | quote }}
+            - name: CAMPAIGN_EXPRESS__API__HTTP_PORT
+              value: {{ .Values.config.httpPort | quote }}
+            - name: CAMPAIGN_EXPRESS__API__GRPC_PORT
+              value: {{ .Values.config.grpcPort | quote }}
+            - name: CAMPAIGN_EXPRESS__METRICS__PORT
+              value: {{ .Values.config.metricsPort | quote }}
+            - name: CAMPAIGN_EXPRESS__NPU__MODEL_PATH
+              value: {{ .Values.config.npuModelPath | quote }}
+            - name: CAMPAIGN_EXPRESS__NPU__DEVICE
+              value: {{ .Values.config.npuDevice | quote }}
+            - name: CAMPAIGN_EXPRESS__NATS__URL
+              value: {{ .Values.nats.url | quote }}
+            - name: CAMPAIGN_EXPRESS__REDIS__URL
+              value: {{ .Values.redis.url | quote }}
+            - name: CAMPAIGN_EXPRESS__CLICKHOUSE__URL
+              value: {{ .Values.clickhouse.url | quote }}
+            - name: RUST_LOG
+              value: {{ .Values.config.logLevel | quote }}
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu | quote }}
+              memory: {{ .Values.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu | quote }}
+              memory: {{ .Values.resources.limits.memory | quote }}
+              {{- if .Values.npu.enabled }}
+              {{ .Values.npu.resourceName }}: {{ .Values.npu.resourceCount | quote }}
+              {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.startupProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+          {{- if .Values.modelStorage.enabled }}
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+          {{- end }}
+      {{- if .Values.modelStorage.enabled }}
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ include "campaign-express.fullname" . }}-models
+      {{- end }}

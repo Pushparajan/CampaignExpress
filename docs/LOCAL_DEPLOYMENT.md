@@ -213,7 +213,11 @@ No CORS configuration is needed because the proxy makes all API calls same-origi
 | `/cdp` | CDP Integrations | CDP platform connections + sync history |
 | `/experiments` | Experiments | A/B/n test management with lift tracking |
 | `/monitoring` | Monitoring | System health, pod status, error rates |
-| `/settings` | Settings | Model reload, system configuration |
+| `/workflows` | Workflows | Campaign approval workflows, pending reviews |
+| `/brand` | Brand | Brand guidelines, asset library, validation |
+| `/reports` | Reports | Report builder, budget tracking, scheduled exports |
+| `/integrations` | Integrations | Asana, Jira, DAM, BI tool connections |
+| `/settings` | Settings | Model reload, inference provider, system configuration |
 
 ---
 
@@ -422,6 +426,76 @@ Authorization: Bearer <token>
 | `POST` | `/api/v1/management/models/reload` | Trigger NPU model hot-reload |
 | `GET` | `/api/v1/management/audit-log` | Audit log entries |
 
+### Workflows & Approvals
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/workflows/campaigns/{id}/submit` | Submit campaign for approval |
+| `POST` | `/api/v1/workflows/approvals/{id}/decide` | Record approval decision |
+| `GET` | `/api/v1/workflows/approvals/pending/{user_id}` | List pending approvals |
+| `GET` | `/api/v1/workflows/calendar` | Campaign calendar events |
+
+### Brand & Asset Library
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/brand/assets` | List brand assets (filter by type/folder) |
+| `POST` | `/api/v1/brand/assets` | Upload asset with versioning |
+| `POST` | `/api/v1/brand/validate` | Validate against brand guidelines |
+
+### Budget & Reporting
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/reports/budget/{campaign_id}` | Budget status, pacing, ROAS |
+| `POST` | `/api/v1/reports/generate` | Generate report with filters |
+| `GET` | `/api/v1/reports/templates` | List report templates |
+| `GET` | `/api/v1/reports/scheduled` | List scheduled reports |
+
+### Recommendations & Personalization
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/recommendations/{user_id}` | Personalized recommendations (CF, content-based, trending) |
+| `POST` | `/api/v1/recommendations/interactions` | Record user-item interaction |
+
+### Segmentation
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/segments` | List audience segments |
+| `POST` | `/api/v1/segments` | Create dynamic segment |
+
+### Suppression
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/suppression/add` | Add to suppression list |
+| `GET` | `/api/v1/suppression/check/{identifier}` | Check suppression status |
+| `DELETE` | `/api/v1/suppression/{identifier}` | Remove from suppression list |
+
+### OfferFit / RL Engine
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/offerfit/recommend` | Get RL-optimized recommendation |
+| `POST` | `/api/v1/offerfit/reward` | Send reward signal |
+
+### Integration Adaptors
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/integrations/tasks/create` | Create Asana/Jira task |
+| `GET` | `/api/v1/integrations/dam/search` | Search DAM assets (AEM/Bynder/Aprimo) |
+| `POST` | `/api/v1/integrations/bi/push` | Push data to Power BI / export Excel |
+
+### Inference Providers
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/inference/providers` | List available providers |
+| `POST` | `/api/v1/inference/predict` | Run inference with batching |
+
 ---
 
 ## Environment Variables
@@ -450,14 +524,17 @@ All configuration is via environment variables prefixed with `CAMPAIGN_EXPRESS__
 | `CAMPAIGN_EXPRESS__CLICKHOUSE__DATABASE` | `campaign_express` | ClickHouse database name |
 | `CAMPAIGN_EXPRESS__CLICKHOUSE__BATCH_SIZE` | `10000` | Analytics batch flush size |
 
-### NPU / Model
+### NPU / Inference
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CAMPAIGN_EXPRESS__NPU__MODEL_PATH` | `/models/colanet.onnx` | Model file path (falls back to synthetic weights) |
 | `CAMPAIGN_EXPRESS__NPU__DEVICE` | `cpu` | Device: `cpu` or `xdna` (AMD Ryzen AI) |
+| `CAMPAIGN_EXPRESS__NPU__PROVIDER` | `cpu` | Inference provider: `cpu`, `groq`, `inferentia2`, `inferentia3`, `ampere`, `tenstorrent` |
 | `CAMPAIGN_EXPRESS__NPU__NUM_THREADS` | `4` | Inference threads |
 | `CAMPAIGN_EXPRESS__NPU__BATCH_SIZE` | `64` | Max inference batch size |
+| `CAMPAIGN_EXPRESS__NPU__BATCHER_FLUSH_US` | `500` | Nagle-style batch flush interval (microseconds) |
+| `CAMPAIGN_EXPRESS__NPU__BATCHER_MAX_ITEMS` | `16` | Max items before batch flush |
 
 ### Feature Flags
 
@@ -468,6 +545,24 @@ All configuration is via environment variables prefixed with `CAMPAIGN_EXPRESS__
 | `CAMPAIGN_EXPRESS__JOURNEY__ENABLED` | `true` | Enable journey orchestration |
 | `CAMPAIGN_EXPRESS__DCO__ENABLED` | `true` | Enable dynamic creative optimization |
 | `CAMPAIGN_EXPRESS__CDP__ENABLED` | `false` | Enable CDP syncing |
+| `CAMPAIGN_EXPRESS__WORKFLOWS__ENABLED` | `true` | Enable campaign approval workflows |
+| `CAMPAIGN_EXPRESS__BRAND__ENABLED` | `true` | Enable brand guidelines enforcement |
+| `CAMPAIGN_EXPRESS__RECOMMENDATIONS__ENABLED` | `true` | Enable recommendation engine |
+| `CAMPAIGN_EXPRESS__SUPPRESSION__ENABLED` | `true` | Enable global suppression lists |
+
+### Integration Adaptors
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CAMPAIGN_EXPRESS__ASANA__API_TOKEN` | _(none)_ | Asana personal access token |
+| `CAMPAIGN_EXPRESS__JIRA__BASE_URL` | _(none)_ | Jira Cloud instance URL |
+| `CAMPAIGN_EXPRESS__JIRA__API_TOKEN` | _(none)_ | Jira API token |
+| `CAMPAIGN_EXPRESS__AEM__BASE_URL` | _(none)_ | AEM Assets API endpoint |
+| `CAMPAIGN_EXPRESS__BYNDER__BASE_URL` | _(none)_ | Bynder API endpoint |
+| `CAMPAIGN_EXPRESS__APRIMO__BASE_URL` | _(none)_ | Aprimo DAM API endpoint |
+| `CAMPAIGN_EXPRESS__POWERBI__CLIENT_ID` | _(none)_ | Power BI service principal client ID |
+| `CAMPAIGN_EXPRESS__OFFERFIT__API_URL` | _(none)_ | OfferFit API endpoint |
+| `CAMPAIGN_EXPRESS__OFFERFIT__API_KEY` | _(none)_ | OfferFit API key |
 
 ### Logging
 
@@ -479,30 +574,51 @@ All configuration is via environment variables prefixed with `CAMPAIGN_EXPRESS__
 
 ## Architecture Overview
 
-### Workspace Crates (16 total)
+### Workspace Crates (26 total)
 
 ```
 CampaignExpress/
   crates/
-    core/          Campaign types, config, errors, OpenRTB, experimentation, templates
-    npu-engine/    CoLaNet SNN model + multi-head inference (offers + DCO variants)
-    agents/        20 Tokio agents per node, NATS queue consumers
-    cache/         Two-tier cache: DashMap L1 -> Redis Cluster L2
-    analytics/     Async ClickHouse batch logger (non-blocking mpsc)
-    api-server/    Axum REST + Tonic gRPC endpoints
-    loyalty/       Starbucks-style loyalty engine (tiers, stars, rewards)
-    dsp/           DSP integration router (Google DV360, TTD, Amazon, Meta)
-    channels/      Omnichannel ingest + activation (push, SMS, email, in-app)
-    management/    Management API + in-memory store + auth + demo data
-    journey/       Journey orchestration engine (state machine, triggers, branching)
-    dco/           Dynamic Creative Optimization (assembly, scoring, Thompson Sampling)
-    cdp/           CDP adapters (Salesforce, Adobe, Segment, Tealium, Hightouch)
-    wasm-edge/     Cloudflare Workers edge stub
+    core/                 Campaign types, config, errors, OpenRTB, experimentation,
+                          templates, inference provider trait (CoLaNetProvider)
+    npu-engine/           CoLaNet SNN model + multi-head inference
+      └── backends/       Hardware backends: CPU, Groq, Inferentia, Ampere, Tenstorrent
+    agents/               20 Tokio agents per node, NATS queue consumers
+      └── batcher.rs      Nagle-style inference batcher (500µs / 16-item flush)
+    cache/                Two-tier cache: DashMap L1 -> Redis Cluster L2
+    analytics/            Async ClickHouse batch logger (non-blocking mpsc)
+    api-server/           Axum REST + Tonic gRPC endpoints
+    loyalty/              Starbucks-style loyalty engine (tiers, stars, rewards)
+    dsp/                  DSP integration router (Google DV360, TTD, Amazon, Meta)
+    channels/             Omnichannel ingest + activation (push, SMS/Twilio, email, in-app)
+    management/           Management API, auth, demo data, approval workflows, calendar
+    journey/              Journey orchestration engine (state machine, triggers, branching)
+    dco/                  Dynamic Creative Optimization + brand guidelines + asset library
+    cdp/                  CDP adapters (Salesforce, Adobe, Segment, Tealium, Hightouch)
+    platform/             Multi-tenant auth, RBAC, API key management
+    billing/              Usage metering, Stripe integration, plan management
+    ops/                  SLA tracking, health monitoring, operational metrics
+    personalization/      Recommendation engine (CF, content-based, trending, new arrivals)
+    segmentation/         Audience segmentation & rule engine
+    reporting/            Report builder, budget tracking, scheduled exports (CSV/JSON/Excel)
+    integrations/         Task mgmt (Asana, Jira), DAM (AEM, Bynder, Aprimo), BI (Power BI, Excel)
+    intelligent-delivery/ Smart delivery optimization + global suppression lists
+    rl-engine/            Reinforcement learning + OfferFit connector
+    mobile-sdk/           Mobile SDK server-side support
+    plugin-marketplace/   Plugin marketplace & extensibility
+    sdk-docs/             API reference, guides, examples, search engine
+    wasm-edge/            Cloudflare Workers edge stub
   src/
-    campaign-express/  Binary entry point (main.rs)
-  ui/                  Next.js 14 management frontend
-  deploy/              Docker, K8s, HAProxy, monitoring configs
-  docs/                Architecture documentation
+    campaign-express/     Binary entry point (main.rs)
+  ui/                     Next.js 14 management frontend
+  deploy/
+    docker/               Multi-stage Dockerfile + docker-compose
+    k8s/                  Kustomize base + overlays + network policies
+    helm/                 Helm chart (campaign-express)
+    terraform/azure/      AKS, Redis, ACR, Key Vault, ClickHouse IaC
+    haproxy/              Ingress load balancer
+    monitoring/           Prometheus, AlertManager, Grafana, Tempo, Loki
+  docs/                   Architecture & deployment documentation
 ```
 
 ### Local service topology
@@ -553,6 +669,10 @@ CampaignExpress/
 | DCO Templates | 3 | Holiday Banner DCO, Product Recommendation, Retargeting |
 | CDP Platforms | 5 | Salesforce, Adobe, Segment, Tealium, Hightouch |
 | Experiments | 4 | Headline A/B, Bid Strategy, DCO vs Static, Channel Priority |
+| Approval Rules | 3 | Standard Campaign (min 1), High Budget (min 2), Regulated Channel (min 2) |
+| Brand Colors | 6 | Primary (#1B4FDB), Secondary (#FF6B35), Accent (#00D4AA), etc. |
+| Font Rules | 3 | Inter body (14-20px), Inter heading (18-72px), Roboto Mono code (12-16px) |
+| Report Templates | 5 | Campaign Performance, Channel Breakdown, Audience Insights, Revenue, Executive |
 
 ---
 

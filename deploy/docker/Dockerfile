@@ -13,6 +13,10 @@ WORKDIR /build
 # Install protobuf compiler for gRPC proto compilation
 RUN apt-get update && apt-get install -y protobuf-compiler && rm -rf /var/lib/apt/lists/*
 
+# For NPU support: install AMD Vitis AI runtime (uncomment when deploying to NPU nodes)
+# RUN wget -qO- https://www.xilinx.com/bin/public/openDownload?filename=vitis-ai-runtime-3.5.0.tar.gz | tar xz -C /opt/
+# ENV VITIS_AI_HOME=/opt/vitis-ai-runtime
+
 # Copy workspace manifests first for dependency caching
 COPY Cargo.toml Cargo.lock* ./
 COPY crates/core/Cargo.toml crates/core/Cargo.toml

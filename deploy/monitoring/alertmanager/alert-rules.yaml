@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alert-rules
+  namespace: campaign-express
+  labels:
+    app: prometheus
+    app.kubernetes.io/part-of: campaign-express
+data:
+  alert-rules.yml: |
+    groups:
+      - name: campaign-express.rules
+        rules:
+          - alert: HighBidLatency
+            expr: histogram_quantile(0.99, sum(rate(bid_latency_seconds_bucket[5m])) by (le)) > 0.05
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High bid latency detected"
+              description: "The p99 bid latency has exceeded 50ms for more than 5 minutes. Current value: {{ $value }}s."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/high-bid-latency"
+
+          - alert: LowThroughput
+            expr: bid_requests_per_second < 500
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Low bid throughput detected"
+              description: "Bid requests per second has dropped below 500 for more than 10 minutes. Current value: {{ $value }} req/s."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/low-throughput"
+
+          - alert: HighErrorRate
+            expr: error_rate > 0.01
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High error rate detected"
+              description: "The error rate has exceeded 1% for more than 5 minutes. Current value: {{ $value | humanizePercentage }}."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/high-error-rate"
+
+          - alert: PodCrashLooping
+            expr: increase(kube_pod_container_status_restarts_total{namespace="campaign-express"}[15m]) > 3
+            for: 0m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.pod }} is crash looping"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted more than 3 times in the last 15 minutes."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/pod-crash-looping"
+
+          - alert: HighMemoryUsage
+            expr: container_memory_working_set_bytes{namespace="campaign-express"} / container_spec_memory_limit_bytes{namespace="campaign-express"} > 0.85
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory usage on {{ $labels.pod }}"
+              description: "Container {{ $labels.container }} in pod {{ $labels.pod }} is using more than 85% of its memory limit for over 10 minutes. Current usage: {{ $value | humanizePercentage }}."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/high-memory-usage"
+
+          - alert: HighCPUUsage
+            expr: rate(container_cpu_usage_seconds_total{namespace="campaign-express"}[5m]) / container_spec_cpu_quota{namespace="campaign-express"} * container_spec_cpu_period{namespace="campaign-express"} > 0.80
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU usage on {{ $labels.pod }}"
+              description: "Container {{ $labels.container }} in pod {{ $labels.pod }} is using more than 80% of its CPU limit for over 10 minutes. Current usage: {{ $value | humanizePercentage }}."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/high-cpu-usage"
+
+      - name: redis.rules
+        rules:
+          - alert: RedisHighMemory
+            expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redis memory usage is high"
+              description: "Redis is using more than 85% of its maximum configured memory for over 5 minutes. Current usage: {{ $value | humanizePercentage }}."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/redis-high-memory"
+
+          - alert: RedisConnectionsExhausted
+            expr: redis_connected_clients / redis_maxclients > 0.9
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Redis connections nearing exhaustion"
+              description: "Redis connected clients have exceeded 90% of max clients for over 5 minutes. Current usage: {{ $value | humanizePercentage }}."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/redis-connections-exhausted"
+
+          - alert: RedisHighLatency
+            expr: rate(redis_commands_duration_seconds_total[5m]) > 0.01
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redis command latency is high"
+              description: "Redis command duration rate has exceeded 10ms for over 5 minutes. Current value: {{ $value }}s."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/redis-high-latency"
+
+      - name: npu.rules
+        rules:
+          - alert: NPUInferenceLatency
+            expr: histogram_quantile(0.99, sum(rate(npu_inference_latency_seconds_bucket[5m])) by (le)) > 0.01
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "NPU inference latency is high"
+              description: "The p99 NPU inference latency has exceeded 10ms for more than 5 minutes. Current value: {{ $value }}s."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/npu-inference-latency"
+
+          - alert: NPUModelLoadFailure
+            expr: increase(npu_model_load_failures_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: critical
+            annotations:
+              summary: "NPU model load failure detected"
+              description: "NPU model load failures have been detected in the last 5 minutes. Total failures: {{ $value }}."
+              runbook_url: "https://wiki.campaign-express.io/runbooks/npu-model-load-failure"

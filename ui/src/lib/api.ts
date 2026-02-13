@@ -16,6 +16,17 @@ import type {
   CdpPlatformConfig,
   SyncEvent,
   Experiment,
+  Tenant,
+  Role,
+  ComplianceStatus,
+  DataSubjectRequest,
+  PricingPlan,
+  Subscription,
+  Invoice,
+  UsageSummary,
+  OnboardingProgress,
+  Incident,
+  BackupSchedule,
 } from "./types";
 
 class ApiClientError extends Error {
@@ -302,6 +313,71 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  // Platform — Tenants
+  async listTenants(): Promise<Tenant[]> {
+    return this.request<Tenant[]>("/api/v1/management/platform/tenants");
+  }
+
+  // Platform — Roles
+  async listRoles(): Promise<Role[]> {
+    return this.request<Role[]>("/api/v1/management/platform/roles");
+  }
+
+  // Platform — Compliance
+  async getComplianceStatus(): Promise<ComplianceStatus[]> {
+    return this.request<ComplianceStatus[]>("/api/v1/management/platform/compliance");
+  }
+
+  // Platform — Privacy (DSR)
+  async listDsrs(): Promise<DataSubjectRequest[]> {
+    return this.request<DataSubjectRequest[]>("/api/v1/management/platform/privacy/dsrs");
+  }
+
+  // Billing — Plans
+  async listPlans(): Promise<PricingPlan[]> {
+    return this.request<PricingPlan[]>("/api/v1/management/billing/plans");
+  }
+
+  // Billing — Subscriptions
+  async getSubscription(tenantId: string): Promise<Subscription> {
+    return this.request<Subscription>(`/api/v1/management/billing/subscriptions/${tenantId}`);
+  }
+
+  // Billing — Invoices
+  async listInvoices(): Promise<Invoice[]> {
+    return this.request<Invoice[]>("/api/v1/management/billing/invoices");
+  }
+
+  // Billing — Usage
+  async getUsageSummary(tenantId: string): Promise<UsageSummary> {
+    return this.request<UsageSummary>(`/api/v1/management/billing/usage/${tenantId}`);
+  }
+
+  // Billing — Onboarding
+  async getOnboardingProgress(tenantId: string): Promise<OnboardingProgress> {
+    return this.request<OnboardingProgress>(`/api/v1/management/billing/onboarding/${tenantId}`);
+  }
+
+  // Ops — Status Page
+  async getStatusPage(): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>("/api/v1/management/ops/status");
+  }
+
+  // Ops — Incidents
+  async listIncidents(): Promise<Incident[]> {
+    return this.request<Incident[]>("/api/v1/management/ops/incidents");
+  }
+
+  // Ops — SLA
+  async getSlaReport(): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>("/api/v1/management/ops/sla");
+  }
+
+  // Ops — Backups
+  async listBackups(): Promise<BackupSchedule[]> {
+    return this.request<BackupSchedule[]>("/api/v1/management/ops/backups");
   }
 }
 

@@ -229,6 +229,39 @@ curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack
 sudo mv kustomize /usr/local/bin/
 ```
 
+### Helm — Kubernetes package management
+
+```bash
+# macOS
+brew install helm
+
+# Linux
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+```
+
+### Terraform — Infrastructure as Code (for Azure deployment)
+
+```bash
+# macOS
+brew install terraform
+
+# Linux
+sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt-get update && sudo apt-get install terraform
+```
+
+### Azure CLI — Azure cloud management (for Terraform)
+
+```bash
+# macOS
+brew install azure-cli
+
+# Linux
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+```
+
 ---
 
 ## 5. Verify Installation
@@ -248,6 +281,12 @@ docker compose version        # Expected: 2.20 or later
 # Node.js
 node --version         # Expected: v18.x or later
 npm --version          # Expected: 9.x or later
+
+# Optional: Kubernetes tools
+kubectl version --client       # Expected: 1.28 or later
+helm version                   # Expected: 3.14 or later
+terraform version              # Expected: 1.5 or later
+az version                     # Azure CLI (for Terraform Azure provider)
 
 # Quick build test
 cd /path/to/CampaignExpress

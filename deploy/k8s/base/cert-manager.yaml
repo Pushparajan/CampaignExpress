@@ -1,0 +1,51 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  labels:
+    app.kubernetes.io/part-of: campaign-express
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@campaign-express.io
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: haproxy
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    app.kubernetes.io/part-of: campaign-express
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@campaign-express.io
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: haproxy
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: campaign-express-tls
+  namespace: campaign-express
+  labels:
+    app.kubernetes.io/part-of: campaign-express
+spec:
+  secretName: campaign-express-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  duration: 2160h
+  renewBefore: 360h
+  dnsNames:
+    - api.campaign-express.io
+    - "*.campaign-express.io"

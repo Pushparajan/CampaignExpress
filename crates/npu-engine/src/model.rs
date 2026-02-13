@@ -176,6 +176,22 @@ impl CoLaNetModel {
     pub fn variant_output_dim(&self) -> usize {
         self.variant_head.output_dim
     }
+
+    /// Check if ONNX Runtime is available for hardware-accelerated inference.
+    /// When the `onnx` feature is enabled and Vitis AI runtime is installed,
+    /// inference will be routed through the NPU hardware path.
+    pub fn onnx_available(&self) -> bool {
+        cfg!(feature = "onnx")
+    }
+
+    /// Return the device this model is targeting.
+    pub fn target_device(&self) -> &str {
+        if cfg!(feature = "onnx") {
+            "xdna_npu"
+        } else {
+            "cpu_synthetic"
+        }
+    }
 }
 
 impl ModelWeights {

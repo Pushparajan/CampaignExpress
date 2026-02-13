@@ -7,9 +7,15 @@
 4. [DSP Integration Flow](#dsp-integration-flow)
 5. [Omnichannel Ingest Flow](#omnichannel-ingest-flow)
 6. [Email Activation & Analytics Flow](#email-activation--analytics-flow)
-7. [Data Flow Diagram](#data-flow-diagram)
-8. [Latency Breakdown](#latency-breakdown)
-9. [Key Design Patterns](#key-design-patterns)
+7. [Inference Provider Pattern](#inference-provider-pattern)
+8. [Recommendation Engine Flow](#recommendation-engine-flow)
+9. [Campaign Workflow & Approval Flow](#campaign-workflow--approval-flow)
+10. [Global Suppression Flow](#global-suppression-flow)
+11. [OfferFit RL Connector Flow](#offerfit-rl-connector-flow)
+12. [Integration Adaptor Flows](#integration-adaptor-flows)
+13. [Data Flow Diagram](#data-flow-diagram)
+14. [Latency Breakdown](#latency-breakdown)
+15. [Key Design Patterns](#key-design-patterns)
 
 ---
 
@@ -521,6 +527,235 @@ GET /v1/channels/email/analytics/{activation_id}
 
 GET /v1/channels/email/analytics
     → Vec<EmailAnalytics>  (all activations)
+```
+
+---
+
+## Inference Provider Pattern
+
+Campaign Express supports multiple hardware backends via the `CoLaNetProvider` trait.
+The inference layer is hardware-agnostic — the same model runs on CPU, Groq LPU,
+AWS Inferentia, Oracle Ampere Altra, or Tenstorrent RISC-V mesh.
+
+### Provider Selection
+
+At startup, the system selects a backend based on configuration:
+
+```
+Config (CAMPAIGN_EXPRESS__NPU__PROVIDER)
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  ProviderType enum dispatch                       │
+│                                                   │
+│  Cpu        → CpuBackend (wraps NpuEngine)       │
+│  Groq       → GroqBackend (LPU, max_batch=64)    │
+│  Inferentia2→ InferentiaBackend (Neuron SDK)      │
+│  Inferentia3→ InferentiaBackend (Neuron SDK v3)   │
+│  Ampere     → AmpereBackend (ARM NEON SIMD)       │
+│  Tenstorrent→ TenstorrentBackend (RISC-V Mesh)   │
+└──────────────────────────────────────────────────┘
+```
+
+### Nagle-Style Batching
+
+The InferenceBatcher collects individual requests and flushes as a batch:
+
+```
+Individual Requests
+    │ │ │
+    ▼ ▼ ▼
+┌────────────────────────────────┐
+│  InferenceBatcher               │
+│                                 │
+│  Collect requests until:        │
+│  • 16 items accumulated        │
+│  • 500µs since first item      │
+│                                 │
+│  Then flush_batch() →           │
+│  provider.predict_batch()       │
+└────────────────────────────────┘
+```
+
+This maximizes throughput on accelerators that prefer batched work.
+
+---
+
+## Recommendation Engine Flow
+
+The personalization crate provides 5 recommendation strategies:
+
+### Strategy Dispatch
+
+```
+GET /v1/recommendations/{user_id}?strategy=cf
+    │
+    ▼
+┌─────────────────────────────────────────────┐
+│  RecommendationEngine                        │
+│                                               │
+│  Strategy selection:                         │
+│  ├─ cf               → Collaborative Filtering│
+│  │                     (co-occurrence matrix)  │
+│  ├─ content_based    → Content-Based           │
+│  │                     (cosine similarity)     │
+│  ├─ frequently_bought→ Frequently Bought       │
+│  │   _together         Together (pair counts)  │
+│  ├─ trending         → Trending Items          │
+│  │                     (time-windowed counts)  │
+│  └─ new_arrivals     → New Arrivals            │
+│                        (registration recency)  │
+│                                               │
+│  All strategies return ranked item IDs        │
+└─────────────────────────────────────────────┘
+```
+
+### Collaborative Filtering Detail
+
+```
+User interactions → item_cooccurrence DashMap
+                     │
+                     ▼
+For user's interacted items:
+  sum co-occurrence scores → rank by total score
+  exclude already-interacted items
+  return top-N
+```
+
+### Content-Based Detail
+
+```
+User feature vector (from interactions)
+        │
+        ▼
+Cosine similarity against all item feature vectors
+  dot(user, item) / (|user| × |item|)
+        │
+        ▼
+Rank by similarity, return top-N
+```
+
+---
+
+## Campaign Workflow & Approval Flow
+
+Campaigns follow a 9-stage lifecycle managed by the WorkflowEngine:
+
+```
+Draft → InReview → Approved → Scheduled → Live → Completed → Archived
+             ↓                                        ↑
+         Rejected → Draft (resubmit)              Paused → Live (resume)
+```
+
+### Approval Process
+
+```
+submit_for_approval(campaign_id, approver_ids)
+    │
+    ▼
+┌────────────────────────────────────────┐
+│  Match approval rule                    │
+│  (Standard: min 1, High Budget: min 2, │
+│   Regulated Channel: min 2)            │
+└──────────────┬─────────────────────────┘
+                │
+                ▼
+┌────────────────────────────────────────┐
+│  Collect approver decisions             │
+│                                         │
+│  if approved_count >= min_approvals:   │
+│    → status = Approved                 │
+│    → auto-transition InReview→Approved │
+│                                         │
+│  if any rejection:                     │
+│    → status = Rejected                 │
+│    → auto-transition InReview→Rejected │
+└────────────────────────────────────────┘
+```
+
+---
+
+## Global Suppression Flow
+
+Before any message send, the suppression list is checked:
+
+```
+Activation request
+    │
+    ▼
+┌────────────────────────────────────┐
+│  SuppressionList::is_suppressed()  │
+│                                     │
+│  Check by:                         │
+│  • User identifier (email/phone)   │
+│  • Channel (email/sms/push/all)    │
+│  • Expiry (permanent or time-bound)│
+│                                     │
+│  If suppressed → skip send         │
+│  If not → proceed with activation  │
+└────────────────────────────────────┘
+```
+
+Supports bulk add/remove and automatic expiry cleanup.
+
+---
+
+## OfferFit RL Connector Flow
+
+The RL engine integrates with OfferFit for reinforcement learning optimization:
+
+```
+OfferFitClient
+    │
+    ├── get_recommendation(user_id, context)
+    │   → Call OfferFit API for optimal action
+    │   → Fallback: Thompson Sampling if API unavailable
+    │
+    ├── send_reward(user_id, action_id, reward)
+    │   → Report outcome back to OfferFit for model update
+    │
+    └── sync_catalog(items)
+        → Push item catalog to OfferFit for selection
+```
+
+---
+
+## Integration Adaptor Flows
+
+### Task Management (Asana / Jira)
+
+```
+Campaign approval event
+    │
+    ▼
+TaskManagementAdaptor
+    ├── Asana: create_task() → Asana API
+    └── Jira:  create_issue() → Jira Cloud API
+
+Status sync: poll adaptor → update campaign status
+```
+
+### Digital Asset Management (AEM Assets / Bynder / Aprimo)
+
+```
+Creative upload/search
+    │
+    ▼
+DamAdaptor
+    ├── AEM Assets: sync, search, folder management
+    ├── Bynder: asset search, metadata sync
+    └── Aprimo: DAM sync, approval workflow
+```
+
+### BI Tools (Power BI / Excel)
+
+```
+Report generation
+    │
+    ▼
+BiToolsAdaptor
+    ├── Power BI: push dataset → create/refresh report
+    └── Excel: generate XLSX export → download
 ```
 
 ---
