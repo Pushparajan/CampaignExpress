@@ -4,7 +4,10 @@
 //! events for tracking: delivered, opened, clicked, bounced, unsubscribed.
 
 use campaign_core::channels::*;
+use campaign_core::event_bus::{make_event, EventSink};
+use campaign_core::types::EventType;
 use dashmap::DashMap;
+use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 /// SendGrid email activation provider.
@@ -15,6 +18,7 @@ pub struct SendGridProvider {
     /// Track unique openers/clickers per activation.
     unique_opens: DashMap<String, std::collections::HashSet<String>>,
     unique_clicks: DashMap<String, std::collections::HashSet<String>>,
+    event_sink: Arc<dyn EventSink>,
 }
 
 impl SendGridProvider {
@@ -29,7 +33,14 @@ impl SendGridProvider {
             analytics: DashMap::new(),
             unique_opens: DashMap::new(),
             unique_clicks: DashMap::new(),
+            event_sink: campaign_core::event_bus::noop_sink(),
         }
+    }
+
+    /// Attach an event sink for emitting analytics events.
+    pub fn with_event_sink(mut self, sink: Arc<dyn EventSink>) -> Self {
+        self.event_sink = sink;
+        self
     }
 
     /// Send an email via SendGrid API.
@@ -121,6 +132,21 @@ impl SendGridProvider {
             "type" => format!("{:?}", event.event)
         )
         .increment(1);
+
+        // Emit delivery events to analytics pipeline
+        let event_type = match event.event {
+            EmailEventType::Delivered => Some(EventType::ActivationDelivered),
+            EmailEventType::Bounce => Some(EventType::ActivationFailed),
+            _ => None,
+        };
+        if let Some(et) = event_type {
+            self.event_sink.emit(make_event(
+                et,
+                &activation_id,
+                None,
+                None,
+            ));
+        }
 
         self.analytics
             .entry(activation_id.clone())

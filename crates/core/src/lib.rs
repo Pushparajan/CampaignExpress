@@ -2,6 +2,7 @@ pub mod channels;
 pub mod config;
 pub mod dsp;
 pub mod error;
+pub mod event_bus;
 pub mod experimentation;
 pub mod inference;
 pub mod journey;
