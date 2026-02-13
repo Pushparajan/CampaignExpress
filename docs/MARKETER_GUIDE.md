@@ -1477,8 +1477,18 @@ Export data to business intelligence platforms:
 
 **Campaign Naming Convention:**
 ```
-Format: [Year]-[Quarter]-[Type]-[Audience]-[Version]
+Recommended Format: [Year]-[Quarter]-[Type]-[Audience]-[Version]
 Example: 2026-Q1-PROMO-NewUsers-v1
+
+Alternative formats are acceptable:
+- "Spring Campaign - Discount Test" (descriptive)
+- "Spring Product Launch 2026" (marketing name)
+- "Welcome Series Q1" (simple)
+
+Key principles:
+- Be consistent within your organization
+- Include enough context for team members
+- Use separators (hyphens, spaces) for readability
 ```
 
 ### 14.2 Audience Segmentation Tips
