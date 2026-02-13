@@ -226,8 +226,41 @@ resource "azurerm_log_analytics_workspace" "main" {
 
 # ── ClickHouse ────────────────────────────────────────────────────────────────
 
-# For production ClickHouse, use a managed service (Altinity.Cloud, ClickHouse Cloud)
-# or deploy via the ClickHouse Kubernetes Operator inside AKS.
+resource "azurerm_kubernetes_cluster_node_pool" "clickhouse" {
+  name                  = "clickhouse"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.main.id
+  vm_size               = var.clickhouse_vm_size
+  node_count            = var.clickhouse_node_count
+  vnet_subnet_id        = azurerm_subnet.clickhouse.id
+  os_disk_size_gb       = 500
+  max_pods              = 20
+  enable_auto_scaling   = true
+  min_count             = var.clickhouse_min_count
+  max_count             = var.clickhouse_max_count
+
+  node_labels = {
+    "role"    = "clickhouse"
+    "storage" = "nvme"
+  }
+
+  node_taints = [
+    "workload=clickhouse:NoSchedule"
+  ]
+
+  tags = local.tags
+}
+
+resource "azurerm_managed_disk" "clickhouse_data" {
+  count                = var.clickhouse_node_count
+  name                 = "${var.project_name}-${var.environment}-ch-data-${count.index}"
+  resource_group_name  = azurerm_resource_group.main.name
+  location             = azurerm_resource_group.main.location
+  storage_account_type = "PremiumV2_LRS"
+  create_option        = "Empty"
+  disk_size_gb         = var.clickhouse_disk_size_gb
+
+  tags = local.tags
+}
 
 # ── Locals ────────────────────────────────────────────────────────────────────
 

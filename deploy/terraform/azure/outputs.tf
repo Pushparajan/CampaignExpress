@@ -39,3 +39,11 @@ output "key_vault_uri" {
 output "log_analytics_workspace_id" {
   value = azurerm_log_analytics_workspace.main.id
 }
+
+output "clickhouse_node_pool_id" {
+  value = azurerm_kubernetes_cluster_node_pool.clickhouse.id
+}
+
+output "clickhouse_disk_ids" {
+  value = azurerm_managed_disk.clickhouse_data[*].id
+}

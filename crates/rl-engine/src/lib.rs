@@ -7,9 +7,11 @@ pub mod contextual;
 pub mod explainability;
 pub mod guardrails;
 pub mod holdout;
+pub mod offerfit;
 
 pub use bandits::BanditEngine;
 pub use contextual::ContextualBanditEngine;
 pub use explainability::ExplainabilityEngine;
 pub use guardrails::GuardrailsEngine;
 pub use holdout::HoldoutManager;
+pub use offerfit::OfferFitClient;

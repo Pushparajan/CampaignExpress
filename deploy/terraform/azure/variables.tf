@@ -76,3 +76,35 @@ variable "redis_shard_count" {
   type        = number
   default     = 3
 }
+
+# ── ClickHouse ──────────────────────────────────────────────────────────────
+
+variable "clickhouse_vm_size" {
+  description = "VM size for ClickHouse nodes (storage-optimized)"
+  type        = string
+  default     = "Standard_L8s_v3"
+}
+
+variable "clickhouse_node_count" {
+  description = "Initial number of ClickHouse nodes"
+  type        = number
+  default     = 3
+}
+
+variable "clickhouse_min_count" {
+  description = "Minimum ClickHouse nodes (autoscaler)"
+  type        = number
+  default     = 3
+}
+
+variable "clickhouse_max_count" {
+  description = "Maximum ClickHouse nodes (autoscaler)"
+  type        = number
+  default     = 6
+}
+
+variable "clickhouse_disk_size_gb" {
+  description = "Managed disk size per ClickHouse node (GB)"
+  type        = number
+  default     = 1000
+}
