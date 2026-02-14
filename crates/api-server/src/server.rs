@@ -4,6 +4,7 @@ use crate::channel_rest::{self, ChannelState};
 use crate::dsp_rest::{self, DspState};
 use crate::loyalty_rest::{self, LoyaltyState};
 use crate::rest::{self, AppState};
+use axum::extract::DefaultBodyLimit;
 use axum::middleware;
 use axum::routing::{get, post};
 use axum::Router;
@@ -21,6 +22,12 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
+/// Maximum request body size (10 MB).
+const MAX_BODY_SIZE: usize = 10 * 1024 * 1024;
+
+/// Maximum bid request body size (1 MB — bid requests should be small).
+const MAX_BID_BODY_SIZE: usize = 1024 * 1024;
+
 /// Main API server managing both REST and gRPC endpoints.
 pub struct ApiServer {
     config: AppConfig,
@@ -32,8 +39,9 @@ impl ApiServer {
         Self { config, processor }
     }
 
-    /// Start the HTTP REST server.
-    pub async fn start_http(&self) -> anyhow::Result<()> {
+    /// Build the Axum router without starting the server.
+    /// Used by main.rs for graceful shutdown integration.
+    pub fn into_router(self) -> anyhow::Result<Router> {
         let state = AppState {
             processor: self.processor.clone(),
             node_id: self.config.node_id.clone(),
@@ -80,9 +88,10 @@ impl ApiServer {
             sendgrid,
         };
 
-        // Bid routes
+        // Bid routes (stricter body limit for bid requests)
         let bid_routes = Router::new()
             .route("/v1/bid", post(rest::handle_bid))
+            .layer(DefaultBodyLimit::max(MAX_BID_BODY_SIZE))
             .with_state(state.clone());
 
         // Operational routes
@@ -143,6 +152,127 @@ impl ApiServer {
             .merge(dsp_routes)
             .merge(channel_routes)
             .merge(mgmt_routes)
+            .layer(DefaultBodyLimit::max(MAX_BODY_SIZE))
+            .layer(CompressionLayer::new())
+            .layer(CorsLayer::permissive())
+            .layer(TraceLayer::new_for_http());
+
+        Ok(app)
+    }
+
+    /// Start the HTTP REST server.
+    pub async fn start_http(&self) -> anyhow::Result<()> {
+        let state = AppState {
+            processor: self.processor.clone(),
+            node_id: self.config.node_id.clone(),
+            start_time: Instant::now(),
+        };
+
+        // Initialize loyalty engine
+        let loyalty_engine = Arc::new(LoyaltyEngine::new(&self.config.loyalty));
+        let loyalty_state = LoyaltyState {
+            engine: loyalty_engine,
+        };
+
+        // Initialize DSP router
+        let dsp_router = Arc::new(DspRouter::new(&self.config.dsp, Vec::new()));
+        let dsp_state = DspState { router: dsp_router };
+
+        // Initialize channel processors
+        let ingest = Arc::new(IngestProcessor::new(vec![
+            campaign_core::channels::IngestSource::MobileApp,
+            campaign_core::channels::IngestSource::Pos,
+            campaign_core::channels::IngestSource::Kiosk,
+            campaign_core::channels::IngestSource::Web,
+            campaign_core::channels::IngestSource::CallCenter,
+            campaign_core::channels::IngestSource::PartnerApi,
+            campaign_core::channels::IngestSource::IoTDevice,
+        ]));
+        let activation = Arc::new(ActivationDispatcher::new(vec![
+            ActivationChannel::PushNotification,
+            ActivationChannel::Sms,
+            ActivationChannel::Email,
+            ActivationChannel::InAppMessage,
+            ActivationChannel::WebPersonalization,
+            ActivationChannel::PaidMediaFacebook,
+            ActivationChannel::PaidMediaTradeDesk,
+            ActivationChannel::PaidMediaGoogle,
+            ActivationChannel::PaidMediaAmazon,
+            ActivationChannel::DigitalSignage,
+            ActivationChannel::KioskDisplay,
+        ]));
+        let sendgrid = Arc::new(SendGridProvider::new(SendGridConfig::default()));
+        let channel_state = ChannelState {
+            ingest,
+            activation,
+            sendgrid,
+        };
+
+        // Bid routes (stricter body limit for bid requests)
+        let bid_routes = Router::new()
+            .route("/v1/bid", post(rest::handle_bid))
+            .layer(DefaultBodyLimit::max(MAX_BID_BODY_SIZE))
+            .with_state(state.clone());
+
+        // Operational routes
+        let ops_routes = Router::new()
+            .route("/health", get(rest::health_check))
+            .route("/ready", get(rest::readiness))
+            .route("/live", get(rest::liveness))
+            .with_state(state);
+
+        // Loyalty routes
+        let loyalty_routes = Router::new()
+            .route("/v1/loyalty/earn", post(loyalty_rest::handle_earn_stars))
+            .route("/v1/loyalty/redeem", post(loyalty_rest::handle_redeem))
+            .route(
+                "/v1/loyalty/balance/{user_id}",
+                get(loyalty_rest::handle_balance),
+            )
+            .route(
+                "/v1/loyalty/reward-signal",
+                post(loyalty_rest::handle_reward_signal),
+            )
+            .with_state(loyalty_state);
+
+        // DSP routes
+        let dsp_routes = Router::new()
+            .route("/v1/dsp/bid", post(dsp_rest::handle_dsp_bid))
+            .route("/v1/dsp/win", post(dsp_rest::handle_dsp_win))
+            .route("/v1/dsp/status", get(dsp_rest::handle_dsp_status))
+            .with_state(dsp_state);
+
+        // Channel routes
+        let channel_routes = Router::new()
+            .route("/v1/channels/ingest", post(channel_rest::handle_ingest))
+            .route("/v1/channels/activate", post(channel_rest::handle_activate))
+            .route(
+                "/v1/webhooks/sendgrid",
+                post(channel_rest::handle_sendgrid_webhook),
+            )
+            .route(
+                "/v1/channels/email/analytics/{activation_id}",
+                get(channel_rest::handle_email_analytics),
+            )
+            .route(
+                "/v1/channels/email/analytics",
+                get(channel_rest::handle_all_email_analytics),
+            )
+            .with_state(channel_state);
+
+        // Management UI routes (with auth middleware)
+        let mgmt_routes = campaign_management::management_router().layer(middleware::from_fn(
+            campaign_management::auth::auth_middleware,
+        ));
+
+        let app = Router::new()
+            .merge(bid_routes)
+            .merge(ops_routes)
+            .merge(loyalty_routes)
+            .merge(dsp_routes)
+            .merge(channel_routes)
+            .merge(mgmt_routes)
+            .layer(DefaultBodyLimit::max(MAX_BODY_SIZE))
             .layer(CompressionLayer::new())
             .layer(CorsLayer::permissive())
             .layer(TraceLayer::new_for_http());

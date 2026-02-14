@@ -1,3 +1,5 @@
+#![warn(clippy::unwrap_used)]
+
 pub mod channel_rest;
 pub mod dsp_rest;
 pub mod grpc;

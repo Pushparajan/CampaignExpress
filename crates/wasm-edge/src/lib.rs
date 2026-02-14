@@ -1,3 +1,5 @@
+#![warn(clippy::unwrap_used)]
+
 //! AWS Lambda@Edge bid request preprocessor.
 //!
 //! Runs on CloudFront edge locations via Lambda@Edge to:
@@ -166,7 +168,7 @@ pub fn validate_openrtb(json: &str) -> bool {
             let has_id = v.get("id").is_some_and(|id| id.is_string());
             let has_imp = v
                 .get("imp")
-                .is_some_and(|imp| imp.is_array() && !imp.as_array().unwrap().is_empty());
+                .is_some_and(|imp| imp.as_array().is_some_and(|arr| !arr.is_empty()));
             has_id && has_imp
         }
         Err(_) => false,
@@ -198,6 +200,7 @@ fn enrich_with_edge_metadata(json: &str, edge_region: &str) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
