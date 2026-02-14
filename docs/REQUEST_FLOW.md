@@ -15,7 +15,14 @@
 12. [Integration Adaptor Flows](#integration-adaptor-flows)
 13. [Data Flow Diagram](#data-flow-diagram)
 14. [Latency Breakdown](#latency-breakdown)
-15. [Key Design Patterns](#key-design-patterns)
+15. [Real-Time Decision Flow](#real-time-decision-flow)
+16. [Feature Store Flow](#feature-store-flow)
+17. [Audience Proxy & Paid Media Flow](#audience-proxy--paid-media-flow)
+18. [Creative Export & Lineage Flow](#creative-export--lineage-flow)
+19. [Unified Governance Gate Flow](#unified-governance-gate-flow)
+20. [Unified Measurement Flow](#unified-measurement-flow)
+21. [Connector Capability & Health Flow](#connector-capability--health-flow)
+22. [Key Design Patterns](#key-design-patterns)
 
 ---
 
@@ -865,6 +872,340 @@ Event → mpsc queue       ~1µs     Non-blocking send
 Queue → batch buffer     async    Tokio select loop
 Buffer → ClickHouse      ~10ms    HTTP POST, NDJSON batch
 Batch size: 10,000 events or 1s flush interval
+```
+
+---
+
+## Real-Time Decision Flow
+
+The decisioning engine handles multi-objective offer selection with explainability.
+
+```
+Client
+    │  POST /api/v1/decisions
+    │  DecisionRequest { user_id, objectives[], channel_filter, num_offers }
+    │
+    ▼
+┌──────────────────────────────────────────────────────────────┐
+│  STEP 1: Load Offer Candidates                               │
+│                                                               │
+│  Fetch registered offers from DecisionEngine                 │
+│  Apply channel filter (if specified)                         │
+│  Result: Vec<OfferCandidate> with base scores                │
+└──────────────────────────┬───────────────────────────────────┘
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│  STEP 2: Multi-Objective Scoring                             │
+│                                                               │
+│  For each candidate, for each objective:                     │
+│    score = base_score * objective_weight * metric_factor     │
+│                                                               │
+│  Objectives: CTR, ConversionRate, Revenue, LTV,              │
+│              Engagement, Retention                            │
+│                                                               │
+│  Final score = blended weighted sum across all objectives    │
+└──────────────────────────┬───────────────────────────────────┘
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│  STEP 3: Build Explanations                                   │
+│                                                               │
+│  Per offer, generate ExplanationFactors:                     │
+│    - SegmentMembership: user segment matches                 │
+│    - BehavioralSignal: recency, engagement history           │
+│    - ContextualRelevance: time, device, location             │
+│    - ModelPrediction: ML model score contribution            │
+│    - BusinessRule: priority boosts, budget constraints        │
+│    - ExplorationBonus: explore vs. exploit factor            │
+└──────────────────────────┬───────────────────────────────────┘
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│  STEP 4: Log Decision (if not simulation)                    │
+│                                                               │
+│  Store decision_id → DecisionResponse in audit log           │
+│  Simulation mode: return results without logging             │
+│  Return: DecisionResponse { decision_id, offers[], logged }  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Feature Store Flow
+
+The feature store manages user features with TTL-based staleness tracking.
+
+```
+Feature Update:
+    PUT /api/v1/features/{user_id}/{feature_name}
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  FeatureStore::update_feature()                   │
+│                                                   │
+│  1. Validate feature_name exists in definitions  │
+│  2. Type-check value against FeatureDefinition   │
+│  3. Store FeatureValue { value, updated_at }     │
+│  4. Return Ok or UnknownFeature error            │
+└──────────────────────────────────────────────────┘
+
+Feature Read:
+    GET /api/v1/features/{user_id}
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  FeatureStore::get_features()                     │
+│                                                   │
+│  1. Lookup UserFeatureVector for user_id         │
+│  2. For each feature, check staleness:           │
+│     elapsed > TTL → Critical alert              │
+│     elapsed > TTL/2 → Warning alert             │
+│  3. Evaluate computed features (DaysSince, etc.) │
+│  4. Return features + staleness alerts           │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## Audience Proxy & Paid Media Flow
+
+Manages segment-to-DSP audience mapping with incremental sync.
+
+```
+Create Proxy:
+    POST /api/v1/dsp/proxy
+    │  { internal_segment_id, dsp_target, external_audience_id }
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  AudienceProxyEngine::create_proxy()              │
+│  Store SegmentProxy mapping                      │
+└──────────────────────────────────────────────────┘
+
+Incremental Sync:
+    POST /api/v1/dsp/proxy/{proxy_id}/sync
+    │  AudienceDelta { additions[], removals[] }
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  AudienceProxyEngine::sync_audience()             │
+│                                                   │
+│  1. Apply additions (add user_ids to proxy)      │
+│  2. Apply removals (remove user_ids)             │
+│  3. Update audience_size = current + delta       │
+│  4. Record sync result with timestamp            │
+│  5. Return AudienceSyncResult                    │
+└──────────────────────────────────────────────────┘
+
+Budget Pacing:
+    PUT /api/v1/dsp/proxy/{proxy_id}/pacing
+    │  { daily_budget, spent_today }
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  Pacing Status Calculation                        │
+│                                                   │
+│  expected_pct = current_hour / 24.0              │
+│  actual_pct   = spent_today / daily_budget       │
+│                                                   │
+│  if spent >= budget → Exhausted                  │
+│  if actual < expected * 0.8 → Underpacing        │
+│  if actual > expected * 1.2 → Overpacing         │
+│  else → OnTrack                                  │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## Creative Export & Lineage Flow
+
+Standardized creative export with IAB validation and full lineage tracking.
+
+```
+Export Creative:
+    POST /api/v1/dco/export
+    │  { creative_id, format, placements[] }
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  CreativeExportEngine::export()                   │
+│                                                   │
+│  1. Build export contract with metadata          │
+│  2. For each placement:                          │
+│     a. Validate against IAB rules               │
+│     b. Check width, height, file size, format    │
+│     c. Record pass/fail per placement            │
+│  3. Record lineage event: ExportedToDsp          │
+│  4. Return CreativeExportContract                │
+└──────────────────────────────────────────────────┘
+
+Lineage Tracking:
+    GET /api/v1/dco/lineage/{creative_id}
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  CreativeLineage { events: Vec<LineageEvent> }    │
+│                                                   │
+│  Event types:                                    │
+│    Created → Modified → Approved →               │
+│    ExportedToDsp → AssignedToCampaign            │
+│                                                   │
+│  Each event: { event_type, timestamp, actor,     │
+│               details }                           │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## Unified Governance Gate Flow
+
+Single go-live decision combining all governance dimensions.
+
+```
+    POST /api/v1/governance/evaluate/{campaign_id}
+    │
+    ▼
+┌──────────────────────────────────────────────────────────────┐
+│  UnifiedGovernanceGate::evaluate()                            │
+│                                                               │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │ Check 1: Revision Approved?                          │     │
+│  │   → Query WorkflowEngine for approval status        │     │
+│  │   → If not approved: add blocker "not approved"     │     │
+│  ├─────────────────────────────────────────────────────┤     │
+│  │ Check 2: Preflight Passed?                           │     │
+│  │   → Run preflight checks (content, compliance)      │     │
+│  │   → If failed: add blocker "preflight failed"       │     │
+│  ├─────────────────────────────────────────────────────┤     │
+│  │ Check 3: Policy Passed?                              │     │
+│  │   → Evaluate policy rules (budget, targeting)       │     │
+│  │   → If failed: add blocker "policy violation"       │     │
+│  ├─────────────────────────────────────────────────────┤     │
+│  │ Check 4: Tasks Complete?                             │     │
+│  │   → Check all required tasks are done               │     │
+│  │   → If incomplete: add blocker "tasks pending"      │     │
+│  └─────────────────────────────────────────────────────┘     │
+│                                                               │
+│  can_go_live = revision ∧ preflight ∧ policy ∧ tasks        │
+│  Record GovernanceAuditEntry: GateChecked                    │
+│  Return: UnifiedGateResult { can_go_live, blockers }        │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Unified Measurement Flow
+
+Standardized event collection and cross-channel reporting.
+
+```
+Record Event:
+    POST /api/v1/measurement/events
+    │  MeasurementEvent { event_type, user_id, channel,
+    │                      campaign_id, decision_id, ... }
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  MeasurementEngine::record_event()                │
+│                                                   │
+│  1. Validate event schema                        │
+│  2. Store event in event log                     │
+│  3. Update running counters per channel/campaign │
+│  4. If experiment event: update variant metrics  │
+└──────────────────────────────────────────────────┘
+
+Cross-Channel Breakdown:
+    GET /api/v1/measurement/breakdown?dimension=Channel
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  MeasurementEngine::breakdown()                   │
+│                                                   │
+│  Dimensions: Channel, Campaign, Experiment,      │
+│    Variant, Segment, Region, DeviceType,         │
+│    DayOfWeek, HourOfDay, ActivationSource        │
+│                                                   │
+│  Groups events by dimension value                │
+│  Computes count, revenue, rate per group         │
+│  Returns: BreakdownReport { entries[] }          │
+└──────────────────────────────────────────────────┘
+
+Experiment Lift:
+    GET /api/v1/measurement/experiments/{experiment_id}
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  Variant measurements with lift calculation       │
+│                                                   │
+│  For each variant:                               │
+│    conversion_rate = converted / assigned         │
+│    lift_vs_control = (variant_rate - ctrl_rate)  │
+│                      / ctrl_rate                  │
+│  Returns: ExperimentMeasurement { variants[] }   │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## Connector Capability & Health Flow
+
+Connector registration, health monitoring, and certification.
+
+```
+Register Connector:
+    POST /api/v1/connectors/register
+    │  ConnectorCapability { connector_id, operations[],
+    │                         entity_types[], auth_methods[] }
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  ConnectorCapabilityRegistry::register()          │
+│                                                   │
+│  Store capability declaration                    │
+│  Initialize health tracking (Healthy, 0 errors)  │
+└──────────────────────────────────────────────────┘
+
+Health Update:
+    POST /api/v1/connectors/{id}/health
+    │  { success: bool, latency_ms }
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  Health Status Calculation (EMA)                  │
+│                                                   │
+│  If failure:                                     │
+│    consecutive_failures++                        │
+│    error_rate = ema(error_rate, 100.0)           │
+│  If success:                                     │
+│    consecutive_failures = 0                      │
+│    error_rate = ema(error_rate, 0.0)             │
+│                                                   │
+│  Status:                                         │
+│    failures >= 5 → Unhealthy                     │
+│    failures >= 2 → Degraded                      │
+│    failures == 0 → Healthy                       │
+│    error_rate > 10% → Degraded                   │
+│    else → Healthy                                │
+└──────────────────────────────────────────────────┘
+
+Certification:
+    POST /api/v1/connectors/{id}/certify
+    │
+    ▼
+┌──────────────────────────────────────────────────┐
+│  Run 12 tests across 7 categories:               │
+│                                                   │
+│  Authentication (2): valid + invalid creds       │
+│  DataRead (2): single + batch reads              │
+│  DataWrite (2): single + batch writes            │
+│  SchemaDiscovery (1): enumerate entities         │
+│  ErrorHandling (2): timeout + malformed          │
+│  RateLimiting (2): within + over limit           │
+│  HealthCheck (1): endpoint responds              │
+│                                                   │
+│  All required tests must pass for certification  │
+└──────────────────────────────────────────────────┘
 ```
 
 ---

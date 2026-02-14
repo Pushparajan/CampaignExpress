@@ -1,7 +1,7 @@
 # Campaign Express — Marketer User Guide
 
-**Version:** 1.0  
-**Last Updated:** 2026-02-13  
+**Version:** 2.0
+**Last Updated:** 2026-02-14
 **Audience:** Campaign Managers, Brand Managers, Marketing Teams
 
 ---
@@ -21,6 +21,12 @@
 11. [Workflows and Approvals](#11-workflows-and-approvals)
 12. [A/B Testing and Experimentation](#12-ab-testing-and-experimentation)
 13. [Integrations](#13-integrations)
+    - [13.5 Unified Governance Gate](#135-unified-governance-gate)
+    - [13.6 Content Personalization](#136-content-personalization)
+    - [13.7 Real-Time Decisioning & Explainability](#137-real-time-decisioning--explainability)
+    - [13.8 Creative Export & Lineage](#138-creative-export--lineage)
+    - [13.9 Unified Measurement & Cross-Channel Reporting](#139-unified-measurement--cross-channel-reporting)
+    - [13.10 Paid Media Audience Proxy](#1310-paid-media-audience-proxy)
 14. [Best Practices](#14-best-practices)
 15. [FAQ](#15-faq)
 16. [Glossary](#16-glossary)
@@ -1460,6 +1466,203 @@ Export data to business intelligence platforms:
 
 ---
 
+## 13.5 Unified Governance Gate
+
+Campaign Express provides a unified go-live gate that combines all governance checks into a single decision.
+
+**How It Works:**
+
+Before a campaign can go live, the governance gate evaluates four dimensions:
+
+```
+Unified Go-Live Gate:
+┌──────────────────────────────────────────────┐
+│ ✓ Revision Approved     (workflow approval)  │
+│ ✓ Preflight Passed      (content/compliance) │
+│ ✓ Policy Passed         (budget/targeting)   │
+│ ✓ Tasks Complete        (required actions)   │
+├──────────────────────────────────────────────┤
+│ Result: CAN GO LIVE ✓                        │
+│ (all four must pass)                         │
+└──────────────────────────────────────────────┘
+```
+
+**If Blocked:**
+The gate provides specific reasons:
+- "Campaign not approved — awaiting manager review"
+- "Preflight failed — missing subject line"
+- "Policy violation — budget exceeds $10,000 limit"
+- "Tasks pending — creative review not completed"
+
+**Audit Trail:**
+All governance decisions are logged with actor, timestamp, and action type for compliance.
+
+---
+
+## 13.6 Content Personalization
+
+Campaign Express supports render-time per-block content personalization. Each block in your email or message can show different content based on user attributes.
+
+**Setting Up Personalization:**
+
+1. Open your creative in the Content Studio
+2. Select a content block
+3. Click **Add Personalization Rule**
+4. Define conditions:
+
+```
+Rule 1: If user is in segment "VIP Customers"
+  → Show: "Welcome back, valued member!"
+
+Rule 2: If feature "lifetime_value" > 500
+  → Show: "Exclusive premium offer just for you"
+
+Rule 3: If channel is "email"
+  → Show: "Click here to view in browser"
+
+Default: "Welcome! Check out our latest offers"
+```
+
+**Conditions Available:**
+- **Segment Member** — User belongs to a specific segment
+- **Feature Above** — User feature value exceeds a threshold
+- **Feature Equals** — User feature matches a specific value
+- **Channel Is** — Content delivered on a specific channel
+- **Always** — Default fallback content
+
+---
+
+## 13.7 Real-Time Decisioning & Explainability
+
+Campaign Express uses a multi-objective optimization engine to select the best offers for each user in real time.
+
+**How Decisioning Works:**
+
+The engine considers multiple objectives simultaneously:
+- **Click-Through Rate (CTR)** — Likelihood the user will click
+- **Conversion Rate** — Likelihood of completing a purchase
+- **Revenue** — Expected revenue from the offer
+- **Lifetime Value (LTV)** — Long-term customer value impact
+- **Engagement** — Overall engagement score
+- **Retention** — Impact on customer retention
+
+**Explainability:**
+
+Every offer decision includes an explanation showing why it was selected:
+```
+Offer: "Spring 20% Discount"
+Score: 0.87
+
+Why this offer?
+  ├─ Segment Membership: User is in "High Spenders" (+0.25)
+  ├─ Behavioral Signal: Recent browse history matches (+0.20)
+  ├─ Model Prediction: ML model predicts high conversion (+0.30)
+  └─ Business Rule: Priority boost for Q1 promotions (+0.12)
+```
+
+**Simulation Mode:**
+
+Test decisioning scenarios without affecting real users:
+1. Navigate to **Decisioning** → **Simulation**
+2. Enter a user ID and objectives
+3. Click **Simulate**
+4. Review ranked offers and explanations
+5. Results are NOT logged to analytics
+
+---
+
+## 13.8 Creative Export & Lineage
+
+Track your creative assets through their entire lifecycle, from creation to DSP export.
+
+**Creative Lineage:**
+```
+Created (Feb 1) → Modified (Feb 3) → Approved (Feb 5) →
+Exported to DSP (Feb 6) → Assigned to Campaign (Feb 7)
+```
+
+**IAB Placement Validation:**
+
+When exporting creatives to DSPs, Campaign Express validates against IAB standards:
+
+| Placement | Size | Max File Size | Formats |
+|-----------|------|---------------|---------|
+| Leaderboard | 728×90 | 150 KB | PNG, JPG, GIF, HTML5 |
+| Medium Rectangle | 300×250 | 150 KB | PNG, JPG, GIF, HTML5 |
+| Mobile Banner | 320×50 | 100 KB | PNG, JPG, GIF |
+| Facebook Feed | 1200×628 | 500 KB | PNG, JPG |
+| Instagram Story | 1080×1920 | 500 KB | PNG, JPG, MP4 |
+
+---
+
+## 13.9 Unified Measurement & Cross-Channel Reporting
+
+Campaign Express provides standardized measurement across all channels with cross-channel breakdown reporting.
+
+**Measurement Events:**
+All channels emit the same standardized events: Delivered, Viewed, Clicked, Converted, Bounced, Revenue, Suppressed.
+
+**Cross-Channel Breakdown:**
+
+Break down performance by any dimension:
+```
+Breakdown by Channel:
+┌──────────┬──────────┬───────┬─────────┬──────────┐
+│ Channel  │ Delivered│ CTR   │ CVR     │ Revenue  │
+├──────────┼──────────┼───────┼─────────┼──────────┤
+│ Email    │ 50,000   │ 4.2%  │ 2.1%    │ $15,000  │
+│ Push     │ 30,000   │ 3.8%  │ 1.5%    │ $8,200   │
+│ SMS      │ 10,000   │ 8.5%  │ 3.2%    │ $6,400   │
+│ In-App   │ 25,000   │ 6.1%  │ 2.8%    │ $12,300  │
+└──────────┴──────────┴───────┴─────────┴──────────┘
+```
+
+**Available Dimensions:** Channel, Campaign, Experiment, Variant, Segment, Region, Device Type, Day of Week, Hour of Day.
+
+**Experiment Lift:**
+For A/B tests, view variant lift vs. control:
+```
+Variant A (Control): 2.1% conversion
+Variant B (Treatment): 2.8% conversion
+Lift: +33.3% vs. control
+```
+
+---
+
+## 13.10 Paid Media Audience Proxy
+
+Map your internal segments to DSP audiences with real-time sync and budget pacing.
+
+**Setting Up an Audience Proxy:**
+1. Navigate to **DSP** → **Audience Proxy**
+2. Click **Create Proxy**
+3. Select internal segment: "High-Value Shoppers"
+4. Select DSP target: "The Trade Desk"
+5. Enter external audience ID
+6. Enable incremental sync
+
+**Sync Types:**
+- **Full Sync** — Replace entire DSP audience
+- **Incremental Sync** — Send only additions and removals (more efficient)
+
+**Match Rate Estimation:**
+Before syncing, estimate the overlap between your segment and the DSP's user base:
+```
+Segment: High-Value Shoppers (25,000 users)
+DSP: The Trade Desk
+Estimated Match Rate: 72% (18,000 users)
+Confidence: High
+```
+
+**Budget Pacing:**
+Monitor real-time budget status for each DSP campaign:
+- **On Track** — Spending within expected range
+- **Underpacing** — Spending too slowly
+- **Overpacing** — Spending too fast
+- **Exhausted** — Daily budget fully spent
+
+---
+
 ## 14. Best Practices
 
 ### 14.1 Campaign Planning
@@ -1671,7 +1874,13 @@ SMS:
 
 **CDP (Customer Data Platform):** System that unifies customer data from multiple sources into a single view.
 
+**Audience Proxy:** Mapping between an internal segment and an external DSP audience for paid media sync.
+
 **Churn:** When a user stops engaging or using your product/service.
+
+**Connector Certification:** Automated test suite that validates a third-party connector meets quality standards.
+
+**Creative Lineage:** Full audit trail of a creative asset's lifecycle from creation through DSP export.
 
 **Click-Through Rate (CTR):** Percentage of users who click on a call-to-action (clicks ÷ impressions).
 
@@ -1687,7 +1896,11 @@ SMS:
 
 **DSP (Demand-Side Platform):** Platform for buying digital ad inventory programmatically.
 
+**Feature Store:** System that manages user attributes (features) with TTL-based freshness tracking.
+
 **Frequency Cap:** Limit on how many times a user sees a message within a time period.
+
+**Governance Gate:** Unified go-live check combining approval, preflight, policy, and task completion.
 
 **Impression:** Single instance of an ad being displayed to a user.
 
@@ -1699,9 +1912,15 @@ SMS:
 
 **Loyalty Tier:** Level in loyalty program (Green, Gold, Reserve) based on earned stars.
 
+**Match Rate:** Estimated percentage of overlap between your internal audience and a DSP's user base.
+
+**Multi-Objective Optimization:** Decisioning approach that balances multiple goals (CTR, revenue, LTV) simultaneously.
+
 **Pacing:** Rate of budget spend over campaign duration.
 
 **Personalization:** Customizing messages based on individual user attributes and behavior.
+
+**Placement Validation:** IAB-standard checks ensuring creatives meet size, format, and file size requirements.
 
 **Quiet Hours:** Time period during which messages won't be sent (typically evening/night).
 

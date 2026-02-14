@@ -63,7 +63,17 @@ crates/
 ├── personalization/      # Recommendation engine
 │   ├── collaborative_filtering.rs
 │   ├── content_based.rs
-│   └── trending.rs
+│   ├── trending.rs
+│   └── decisioning.rs    # ★ Real-time multi-objective decisioning
+│                          #   - CTR, ConversionRate, Revenue, LTV optimization
+│                          #   - Per-offer explainability with factor categories
+│                          #   - Simulation mode for what-if testing
+│
+├── cdp/
+│   └── feature_store.rs  # ★ Online feature store for ML features
+│                          #   - TTL-based staleness detection
+│                          #   - Computed features (DaysSince, Ratio, Threshold)
+│                          #   - Feature health monitoring
 │
 ├── rl-engine/            # Reinforcement learning
 │   ├── offerfit.rs       # OfferFit integration
@@ -72,6 +82,14 @@ crates/
 └── dco/                  # Dynamic Creative Optimization
     └── variant_scoring.rs # A/B testing with Thompson Sampling
 ```
+
+### New ML Modules (v2)
+
+**Real-Time Decision API** (`personalization/decisioning.rs`):
+This is a key module for ML engineers. It implements multi-objective optimization that blends scores across CTR, ConversionRate, Revenue, LTV, Engagement, and Retention with configurable weights. Each decision includes per-offer explainability factors showing WHY an offer was selected (SegmentMembership, BehavioralSignal, ContextualRelevance, ModelPrediction, BusinessRule, ExplorationBonus). The simulation mode lets you test decisioning scenarios without logging.
+
+**Online Feature Store** (`cdp/feature_store.rs`):
+Manages typed feature definitions with TTL-based staleness tracking. Features can be Behavioral, Demographic, Transactional, Engagement, or Predictive. Includes computed features (DaysSince last purchase, Ratio of conversions to views, etc.) and health monitoring to detect stale features that need refreshing.
 
 ### The ML Stack
 
