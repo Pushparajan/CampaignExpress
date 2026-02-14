@@ -1,5 +1,6 @@
 .PHONY: build build-release test lint fmt check docker-build docker-push \
-       deploy-staging deploy-prod k8s-apply compose-up compose-down clean
+       deploy-staging deploy-prod k8s-apply compose-up compose-down clean \
+       aws-deploy aws-infra aws-build aws-services aws-app aws-monitor aws-health aws-destroy
 
 # Variables
 IMAGE_NAME ?= campaign-express
@@ -93,6 +94,34 @@ deploy-monitoring:
 	kubectl apply -f deploy/monitoring/grafana/grafana-deployment.yaml
 
 deploy-all: deploy-infra deploy-monitoring deploy-prod
+
+# =============================================================================
+# AWS Deployment
+# =============================================================================
+
+aws-deploy:
+	deploy/aws/deploy-aws.sh
+
+aws-infra:
+	deploy/aws/deploy-aws.sh --stage infra
+
+aws-build:
+	deploy/aws/deploy-aws.sh --stage build
+
+aws-services:
+	deploy/aws/deploy-aws.sh --stage services
+
+aws-app:
+	deploy/aws/deploy-aws.sh --stage app
+
+aws-monitor:
+	deploy/aws/deploy-aws.sh --stage monitor
+
+aws-health:
+	deploy/aws/deploy-aws.sh --health
+
+aws-destroy:
+	deploy/aws/deploy-aws.sh --destroy
 
 # =============================================================================
 # Cleanup
