@@ -550,6 +550,94 @@ impl Default for VariableBrowser {
     }
 }
 
+// ─── Render-Time Personalization (FR-OWN-CNT-002) ─────────────────────
+
+/// A personalization rule applied to a block at render time.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlockPersonalization {
+    pub block_id: Uuid,
+    pub rules: Vec<PersonalizationRule>,
+}
+
+/// A single personalization rule for a block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersonalizationRule {
+    pub field: String,
+    pub condition: PersonalizationCondition,
+    pub value: String,
+    pub fallback: String,
+}
+
+/// Conditions for personalization.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PersonalizationCondition {
+    SegmentMember(u32),
+    FeatureAbove { feature: String, threshold: f64 },
+    FeatureEquals { feature: String, value: String },
+    ChannelIs(String),
+    Always,
+}
+
+/// Engine for applying per-block personalization at render time.
+pub struct RenderTimePersonalizer;
+
+impl RenderTimePersonalizer {
+    /// Apply personalization rules to block content.
+    pub fn personalize_block(
+        block: &EmailBlock,
+        rules: &[PersonalizationRule],
+        user_segments: &[u32],
+        user_features: &HashMap<String, String>,
+        channel: &str,
+    ) -> EmailBlock {
+        let mut personalized = block.clone();
+
+        for rule in rules {
+            let matches = match &rule.condition {
+                PersonalizationCondition::SegmentMember(seg) => user_segments.contains(seg),
+                PersonalizationCondition::FeatureAbove { feature, threshold } => user_features
+                    .get(feature)
+                    .and_then(|v| v.parse::<f64>().ok())
+                    .is_some_and(|v| v >= *threshold),
+                PersonalizationCondition::FeatureEquals { feature, value } => {
+                    user_features.get(feature).is_some_and(|v| v == value)
+                }
+                PersonalizationCondition::ChannelIs(ch) => channel == ch,
+                PersonalizationCondition::Always => true,
+            };
+
+            let resolved = if matches { &rule.value } else { &rule.fallback };
+
+            personalized
+                .content
+                .insert(rule.field.clone(), resolved.clone());
+        }
+
+        personalized
+    }
+
+    /// Render a full template with per-block personalization.
+    pub fn render_personalized(
+        blocks: &[EmailBlock],
+        personalizations: &[BlockPersonalization],
+        user_segments: &[u32],
+        user_features: &HashMap<String, String>,
+        channel: &str,
+    ) -> Vec<EmailBlock> {
+        blocks
+            .iter()
+            .map(|block| {
+                if let Some(bp) = personalizations.iter().find(|p| p.block_id == block.id) {
+                    Self::personalize_block(block, &bp.rules, user_segments, user_features, channel)
+                } else {
+                    block.clone()
+                }
+            })
+            .collect()
+    }
+}
+
 // ─── Compliance Automation (FR-CNT-004) ───────────────────────────────
 
 /// Channel compliance issue.
@@ -987,5 +1075,63 @@ mod tests {
         // Export for translation
         let exported = engine.export_for_translation(&template_id);
         assert_eq!(exported.len(), 2);
+    }
+
+    #[test]
+    fn test_render_time_personalization() {
+        let block_id = Uuid::new_v4();
+        let block = EmailBlock {
+            id: block_id,
+            block_type: BlockType::Hero,
+            content: vec![
+                ("headline".to_string(), "Default headline".to_string()),
+                ("cta_text".to_string(), "Shop Now".to_string()),
+            ]
+            .into_iter()
+            .collect(),
+            styles: HashMap::new(),
+            mobile_styles: None,
+            sort_order: 0,
+            snippet_id: None,
+        };
+
+        let rules = vec![
+            PersonalizationRule {
+                field: "headline".to_string(),
+                condition: PersonalizationCondition::SegmentMember(42),
+                value: "VIP Welcome!".to_string(),
+                fallback: "Welcome!".to_string(),
+            },
+            PersonalizationRule {
+                field: "cta_text".to_string(),
+                condition: PersonalizationCondition::FeatureAbove {
+                    feature: "ltv".to_string(),
+                    threshold: 500.0,
+                },
+                value: "Exclusive Offers".to_string(),
+                fallback: "Browse Deals".to_string(),
+            },
+        ];
+
+        // VIP user with high LTV
+        let mut features = HashMap::new();
+        features.insert("ltv".to_string(), "750.0".to_string());
+        let result = RenderTimePersonalizer::personalize_block(
+            &block,
+            &rules,
+            &[42, 10],
+            &features,
+            "email",
+        );
+        assert_eq!(result.content["headline"], "VIP Welcome!");
+        assert_eq!(result.content["cta_text"], "Exclusive Offers");
+
+        // Non-VIP user with low LTV
+        let mut features2 = HashMap::new();
+        features2.insert("ltv".to_string(), "100.0".to_string());
+        let result2 =
+            RenderTimePersonalizer::personalize_block(&block, &rules, &[10], &features2, "email");
+        assert_eq!(result2.content["headline"], "Welcome!");
+        assert_eq!(result2.content["cta_text"], "Browse Deals");
     }
 }

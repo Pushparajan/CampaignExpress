@@ -773,6 +773,193 @@ impl Default for PolicyEngine {
     }
 }
 
+// ─── Unified Preflight Gate (FR-GOV-UNI-001) ──────────────────────────
+
+/// Combines revision approval, preflight checks, and policy evaluation
+/// into a single go-live decision.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnifiedGateResult {
+    pub object_id: Uuid,
+    pub object_type: GovernedObjectType,
+    pub revision_approved: bool,
+    pub preflight_passed: bool,
+    pub policy_passed: bool,
+    pub all_tasks_complete: bool,
+    pub can_go_live: bool,
+    pub blocking_reasons: Vec<String>,
+    pub warnings: Vec<String>,
+    pub evaluated_at: DateTime<Utc>,
+}
+
+/// Audit log entry for governance actions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GovernanceAuditEntry {
+    pub id: Uuid,
+    pub object_id: Uuid,
+    pub object_type: GovernedObjectType,
+    pub action: GovernanceAction,
+    pub actor_id: Uuid,
+    pub actor_name: String,
+    pub details: String,
+    pub occurred_at: DateTime<Utc>,
+}
+
+/// Governance action types for audit trail.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GovernanceAction {
+    RevisionCreated,
+    RevisionSubmitted,
+    RevisionApproved,
+    RevisionRejected,
+    PreflightRan,
+    PolicyEvaluated,
+    GateChecked,
+    CommentAdded,
+    TaskCreated,
+    TaskCompleted,
+}
+
+/// Unified governance gate engine.
+pub struct UnifiedGovernanceGate {
+    audit_log: DashMap<Uuid, GovernanceAuditEntry>,
+}
+
+impl UnifiedGovernanceGate {
+    pub fn new() -> Self {
+        Self {
+            audit_log: DashMap::new(),
+        }
+    }
+
+    /// Evaluate the unified go-live gate for an object.
+    ///
+    /// Combines: revision approval + preflight checks + policy checks + task completion.
+    pub fn evaluate(
+        &self,
+        object_id: Uuid,
+        object_type: GovernedObjectType,
+        revision_status: &RevisionStatus,
+        preflight_results: &[(String, bool, bool)], // (name, passed, blocking)
+        policy_results: &[PolicyCheckResult],
+        tasks_complete: bool,
+    ) -> UnifiedGateResult {
+        let mut blocking = Vec::new();
+        let mut warnings = Vec::new();
+
+        // 1. Check revision is approved
+        let revision_approved = *revision_status == RevisionStatus::Approved;
+        if !revision_approved {
+            blocking.push(format!(
+                "Revision not approved (status: {:?})",
+                revision_status
+            ));
+        }
+
+        // 2. Check preflight results
+        let mut preflight_passed = true;
+        for (name, passed, is_blocking) in preflight_results {
+            if !passed {
+                if *is_blocking {
+                    preflight_passed = false;
+                    blocking.push(format!("Preflight check failed: {}", name));
+                } else {
+                    warnings.push(format!("Preflight warning: {}", name));
+                }
+            }
+        }
+
+        // 3. Check policy results
+        let mut policy_passed = true;
+        for result in policy_results {
+            if !result.passed {
+                if result.blocking {
+                    policy_passed = false;
+                    blocking.push(format!("Policy blocked: {}", result.rule_name));
+                } else {
+                    warnings.push(format!("Policy warning: {}", result.rule_name));
+                }
+            }
+        }
+
+        // 4. Check all tasks complete
+        if !tasks_complete {
+            blocking.push("Outstanding change tasks not completed".to_string());
+        }
+
+        let can_go_live = revision_approved && preflight_passed && policy_passed && tasks_complete;
+
+        // Audit
+        let entry = GovernanceAuditEntry {
+            id: Uuid::new_v4(),
+            object_id,
+            object_type: object_type.clone(),
+            action: GovernanceAction::GateChecked,
+            actor_id: Uuid::nil(),
+            actor_name: "system".to_string(),
+            details: if can_go_live {
+                "Gate passed — go-live allowed".to_string()
+            } else {
+                format!("Gate blocked: {} reason(s)", blocking.len())
+            },
+            occurred_at: Utc::now(),
+        };
+        self.audit_log.insert(entry.id, entry);
+
+        UnifiedGateResult {
+            object_id,
+            object_type,
+            revision_approved,
+            preflight_passed,
+            policy_passed,
+            all_tasks_complete: tasks_complete,
+            can_go_live,
+            blocking_reasons: blocking,
+            warnings,
+            evaluated_at: Utc::now(),
+        }
+    }
+
+    /// Get audit log entries for an object.
+    pub fn audit_log(&self, object_id: &Uuid) -> Vec<GovernanceAuditEntry> {
+        self.audit_log
+            .iter()
+            .filter(|e| e.value().object_id == *object_id)
+            .map(|e| e.value().clone())
+            .collect()
+    }
+
+    /// Record a manual audit entry.
+    pub fn record_audit(
+        &self,
+        object_id: Uuid,
+        object_type: GovernedObjectType,
+        action: GovernanceAction,
+        actor_id: Uuid,
+        actor_name: String,
+        details: String,
+    ) -> GovernanceAuditEntry {
+        let entry = GovernanceAuditEntry {
+            id: Uuid::new_v4(),
+            object_id,
+            object_type,
+            action,
+            actor_id,
+            actor_name,
+            details,
+            occurred_at: Utc::now(),
+        };
+        self.audit_log.insert(entry.id, entry.clone());
+        entry
+    }
+}
+
+impl Default for UnifiedGovernanceGate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -964,5 +1151,89 @@ mod tests {
             .filter(|r| !r.passed && !r.blocking)
             .collect();
         assert!(!warnings.is_empty()); // FrequencyCapSet should be a warning
+    }
+
+    #[test]
+    fn test_unified_gate_all_pass() {
+        let gate = UnifiedGovernanceGate::new();
+        let object_id = Uuid::new_v4();
+
+        let result = gate.evaluate(
+            object_id,
+            GovernedObjectType::Campaign,
+            &RevisionStatus::Approved,
+            &[
+                ("Brand Check".to_string(), true, true),
+                ("Link Check".to_string(), true, true),
+            ],
+            &[PolicyCheckResult {
+                rule_id: Uuid::new_v4(),
+                rule_name: "Legal Review".to_string(),
+                passed: true,
+                blocking: true,
+                message: "Passed".to_string(),
+            }],
+            true,
+        );
+
+        assert!(result.can_go_live);
+        assert!(result.blocking_reasons.is_empty());
+    }
+
+    #[test]
+    fn test_unified_gate_revision_not_approved() {
+        let gate = UnifiedGovernanceGate::new();
+
+        let result = gate.evaluate(
+            Uuid::new_v4(),
+            GovernedObjectType::Campaign,
+            &RevisionStatus::Draft,
+            &[],
+            &[],
+            true,
+        );
+
+        assert!(!result.can_go_live);
+        assert!(!result.revision_approved);
+        assert!(result
+            .blocking_reasons
+            .iter()
+            .any(|r| r.contains("Revision not approved")));
+    }
+
+    #[test]
+    fn test_unified_gate_preflight_blocked() {
+        let gate = UnifiedGovernanceGate::new();
+
+        let result = gate.evaluate(
+            Uuid::new_v4(),
+            GovernedObjectType::Campaign,
+            &RevisionStatus::Approved,
+            &[("Unsubscribe Link".to_string(), false, true)],
+            &[],
+            true,
+        );
+
+        assert!(!result.can_go_live);
+        assert!(!result.preflight_passed);
+    }
+
+    #[test]
+    fn test_unified_gate_audit_logged() {
+        let gate = UnifiedGovernanceGate::new();
+        let object_id = Uuid::new_v4();
+
+        gate.evaluate(
+            object_id,
+            GovernedObjectType::Creative,
+            &RevisionStatus::Approved,
+            &[],
+            &[],
+            true,
+        );
+
+        let log = gate.audit_log(&object_id);
+        assert_eq!(log.len(), 1);
+        assert_eq!(log[0].action, GovernanceAction::GateChecked);
     }
 }

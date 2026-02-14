@@ -13,6 +13,7 @@ pub mod store;
 pub mod workflows;
 pub mod workspace;
 
+pub use governance::UnifiedGovernanceGate;
 pub use handlers::ManagementState;
 pub use router::management_router;
 pub use store::ManagementStore;

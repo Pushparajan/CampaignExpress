@@ -18,7 +18,8 @@ pub mod whatsapp;
 pub use activation::ActivationDispatcher;
 pub use content_cards::ContentCardEngine;
 pub use content_studio::{
-    ComplianceChecker, EmailTemplateBuilder, HtmlEditor, LocalizationEngine, VariableBrowser,
+    ComplianceChecker, EmailTemplateBuilder, HtmlEditor, LocalizationEngine,
+    RenderTimePersonalizer, VariableBrowser,
 };
 pub use email::SendGridProvider;
 pub use in_app::InAppEngine;
