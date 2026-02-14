@@ -1,0 +1,14 @@
+[package]
+name = "campaign-devops-toolkit"
+version.workspace = true
+edition.workspace = true
+description = "DevOps & SRE toolkit for proactive issue detection, diagnosis, and remediation"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+dashmap = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
