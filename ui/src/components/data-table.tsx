@@ -167,22 +167,44 @@ export default function DataTable<T extends Record<string, any>>({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                aria-label={`Page ${page + 1}`}
-                aria-current={page === currentPage ? "page" : undefined}
-                className={clsx(
-                  "w-8 h-8 rounded-lg text-xs font-medium transition-colors",
-                  page === currentPage
-                    ? "bg-primary text-white"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
-                )}
-              >
-                {page + 1}
-              </button>
-            ))}
+            {(() => {
+              // Show at most 7 page buttons with ellipsis for large page counts
+              const MAX_VISIBLE = 7;
+              let pages: (number | "ellipsis-start" | "ellipsis-end")[];
+              if (totalPages <= MAX_VISIBLE) {
+                pages = Array.from({ length: totalPages }, (_, i) => i);
+              } else {
+                const start = Math.max(1, currentPage - 1);
+                const end = Math.min(totalPages - 2, currentPage + 1);
+                pages = [0];
+                if (start > 1) pages.push("ellipsis-start");
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (end < totalPages - 2) pages.push("ellipsis-end");
+                pages.push(totalPages - 1);
+              }
+              return pages.map((page) =>
+                typeof page === "string" ? (
+                  <span key={page} className="w-8 h-8 flex items-center justify-center text-xs text-gray-500">
+                    &hellip;
+                  </span>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    aria-label={`Page ${page + 1}`}
+                    aria-current={page === currentPage ? "page" : undefined}
+                    className={clsx(
+                      "w-8 h-8 rounded-lg text-xs font-medium transition-colors",
+                      page === currentPage
+                        ? "bg-primary text-white"
+                        : "text-gray-400 hover:text-white hover:bg-gray-700"
+                    )}
+                  >
+                    {page + 1}
+                  </button>
+                )
+              );
+            })()}
             <button
               onClick={() =>
                 setCurrentPage(Math.min(totalPages - 1, currentPage + 1))

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -59,13 +59,17 @@ export default function CampaignsPage() {
     },
   });
 
-  const filteredCampaigns = (campaigns ?? []).filter((c) => {
-    const matchesSearch =
-      !searchQuery ||
-      c.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredCampaigns = useMemo(
+    () =>
+      (campaigns ?? []).filter((c) => {
+        const matchesSearch =
+          !searchQuery ||
+          c.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+        return matchesSearch && matchesStatus;
+      }),
+    [campaigns, searchQuery, statusFilter]
+  );
 
   const columns: Column<Campaign>[] = [
     {

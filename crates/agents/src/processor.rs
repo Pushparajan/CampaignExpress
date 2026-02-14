@@ -88,10 +88,11 @@ impl BidProcessor {
         }
 
         // Generate candidate offer IDs (in production, these come from campaign targeting)
-        let offer_ids: Vec<String> =
-            (0..self.npu.config().batch_size.min(request.imp.len().max(4)))
-                .map(|i| format!("offer-{:04}", i))
-                .collect();
+        let count = self.npu.config().batch_size.min(request.imp.len().max(4));
+        let mut offer_ids = Vec::with_capacity(count);
+        for i in 0..count {
+            offer_ids.push(format!("offer-{i:04}"));
+        }
 
         // Run NPU inference to score offers (loyalty features are baked into the feature vector)
         let inference_start = std::time::Instant::now();
@@ -114,7 +115,7 @@ impl BidProcessor {
         }
 
         // Select the winning offer (highest score above bid floor)
-        let mut seat_bids = Vec::new();
+        let mut seat_bids = Vec::with_capacity(request.imp.len());
 
         for imp in &request.imp {
             let best = results

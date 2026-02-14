@@ -7,11 +7,12 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 struct CacheEntry {
-    profile: UserProfile,
+    profile: Arc<UserProfile>,
     inserted_at: Instant,
 }
 
 /// Lock-free local cache for frequently accessed user profiles.
+/// Returns Arc<UserProfile> to avoid cloning on every cache hit.
 pub struct LocalCache {
     store: Arc<DashMap<String, CacheEntry>>,
     ttl: Duration,
@@ -28,21 +29,31 @@ impl LocalCache {
     }
 
     /// Get a profile from the local cache, returns None if expired or missing.
-    pub fn get(&self, user_id: &str) -> Option<UserProfile> {
+    /// Returns Arc to avoid cloning on every cache hit (critical for 50M req/hr).
+    pub fn get(&self, user_id: &str) -> Option<Arc<UserProfile>> {
         let entry = self.store.get(user_id)?;
         if entry.inserted_at.elapsed() > self.ttl {
             drop(entry);
             self.store.remove(user_id);
             return None;
         }
-        Some(entry.profile.clone())
+        Some(Arc::clone(&entry.profile))
     }
 
     /// Insert or update a profile in the local cache.
     pub fn put(&self, user_id: String, profile: UserProfile) {
-        // Simple eviction: if over capacity, skip insert (background cleanup handles this)
+        self.put_arc(user_id, Arc::new(profile));
+    }
+
+    /// Insert or update with a pre-wrapped Arc (avoids double-Arc on L2 backfill).
+    pub fn put_arc(&self, user_id: String, profile: Arc<UserProfile>) {
+        // If at capacity and key doesn't exist, evict one expired entry first
         if self.store.len() >= self.max_entries && !self.store.contains_key(&user_id) {
-            return;
+            self.evict_one_expired();
+            // If still full after eviction attempt, skip insert
+            if self.store.len() >= self.max_entries {
+                return;
+            }
         }
         self.store.insert(
             user_id,
@@ -51,6 +62,20 @@ impl LocalCache {
                 inserted_at: Instant::now(),
             },
         );
+    }
+
+    /// Evict a single expired entry (fast path for put under pressure).
+    fn evict_one_expired(&self) {
+        let mut to_remove = None;
+        for entry in self.store.iter() {
+            if entry.value().inserted_at.elapsed() > self.ttl {
+                to_remove = Some(entry.key().clone());
+                break;
+            }
+        }
+        if let Some(key) = to_remove {
+            self.store.remove(&key);
+        }
     }
 
     /// Remove expired entries. Call this periodically from a background task.
