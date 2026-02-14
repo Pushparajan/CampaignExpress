@@ -92,6 +92,8 @@ dashmap = "5.5"
 parking_lot = "0.12"
 bytes = "1.5"
 base64 = "0.22"
+sha2 = "0.10"
+hex = "0.4"
 url = "2.5"
 
 # Internal crates
