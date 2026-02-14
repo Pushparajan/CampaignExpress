@@ -81,12 +81,18 @@ CampaignExpress/
 
 ## Documentation
 
+### Architecture & Deployment
 - **[Architecture Guide](docs/ARCHITECTURE.md)** - Comprehensive end-to-end architecture documentation covering all modules, data flows, infrastructure, and integrations
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
 - **[Local Deployment](docs/LOCAL_DEPLOYMENT.md)** - Local development environment setup
 - **[Request Flow](docs/REQUEST_FLOW.md)** - Detailed request processing flow
 - **[Prerequisites](docs/PREREQUISITES.md)** - Installation prerequisites for each platform
 - **[SaaS Operations Guide](docs/SAAS_OPERATIONS.md)** - People, skills, and team structure needed to operate CampaignExpress as a SaaS product
+
+### Operating Guides for Engineers (College Freshers)
+- **[Rust Engineer Guide](docs/RUST_ENGINEER_GUIDE.md)** - Getting started guide for Rust engineers covering language fundamentals, async programming, and development workflow
+- **[ML Engineer Guide](docs/ML_ENGINEER_GUIDE.md)** - Real-time ML inference operations, model deployment, and performance optimization for ML engineers
+- **[SRE Guide](docs/SRE_GUIDE.md)** - Kubernetes operations, monitoring, incident response, and infrastructure management for SRE specialists
 
 ## Quick Start
 
@@ -99,6 +105,11 @@ CampaignExpress/
 > **First time?** See [docs/PREREQUISITES.md](docs/PREREQUISITES.md) for detailed installation instructions for each platform.
 > 
 > **For Marketers:** See [docs/MARKETER_GUIDE.md](docs/MARKETER_GUIDE.md) for a comprehensive guide on creating campaigns, managing creatives, and using all marketer-facing features.
+>
+> **For Engineers:** New to the team? Check out our role-specific guides:
+> - [Rust Engineer Guide](docs/RUST_ENGINEER_GUIDE.md) - For backend engineers working with Rust
+> - [ML Engineer Guide](docs/ML_ENGINEER_GUIDE.md) - For ML engineers working on inference and models
+> - [SRE Guide](docs/SRE_GUIDE.md) - For SRE/DevOps engineers managing infrastructure
 
 ### Docker Compose (full stack)
 
