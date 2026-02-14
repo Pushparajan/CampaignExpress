@@ -156,6 +156,43 @@ impl TenantManager {
         }
     }
 
+    /// Reactivate a suspended or cancelled tenant.
+    pub fn reactivate_tenant(&self, id: Uuid) -> Option<Tenant> {
+        if let Some(mut entry) = self.tenants.get_mut(&id) {
+            entry.status = TenantStatus::Active;
+            entry.updated_at = Utc::now();
+            info!(tenant_id = %id, "Tenant reactivated");
+            Some(entry.clone())
+        } else {
+            None
+        }
+    }
+
+    /// Reset daily usage counters for a tenant.
+    pub fn reset_daily_usage(&self, id: Uuid) -> Option<()> {
+        if let Some(mut entry) = self.tenants.get_mut(&id) {
+            entry.usage.offers_served_today = 0;
+            entry.usage.api_calls_today = 0;
+            entry.usage.last_reset = Utc::now();
+            entry.updated_at = Utc::now();
+            info!(tenant_id = %id, "Daily usage counters reset");
+            Some(())
+        } else {
+            None
+        }
+    }
+
+    /// Set a custom domain for a tenant.
+    pub fn set_custom_domain(&self, id: Uuid, domain: Option<String>) -> Option<()> {
+        if let Some(mut entry) = self.tenants.get_mut(&id) {
+            entry.settings.custom_domain = domain;
+            entry.updated_at = Utc::now();
+            Some(())
+        } else {
+            None
+        }
+    }
+
     /// Check whether a tenant is within its quota for the given resource.
     pub fn check_quota(&self, tenant_id: Uuid, resource: &str) -> Result<bool, anyhow::Error> {
         let tenant = self
