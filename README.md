@@ -86,6 +86,7 @@ CampaignExpress/
 - **[Local Deployment](docs/LOCAL_DEPLOYMENT.md)** - Local development environment setup
 - **[Request Flow](docs/REQUEST_FLOW.md)** - Detailed request processing flow
 - **[Prerequisites](docs/PREREQUISITES.md)** - Installation prerequisites for each platform
+- **[SaaS Operations Guide](docs/SAAS_OPERATIONS.md)** - People, skills, and team structure needed to operate CampaignExpress as a SaaS product
 
 ## Quick Start
 
