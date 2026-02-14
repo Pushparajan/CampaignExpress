@@ -83,29 +83,61 @@ CampaignExpress/
 │   ├── redis/                # 6-node Redis Cluster StatefulSet
 │   ├── clickhouse/           # Analytics DB StatefulSet
 │   └── monitoring/           # Prometheus, Grafana, AlertManager, Tempo, Loki
-└── docs/                     # Deployment & architecture guides
-    ├── MARKETER_GUIDE.md     # User guide for campaign managers and marketers
-    └── ...
+├── docs/                     # All project documentation
+│   ├── ARCHITECTURE.md       # End-to-end architecture
+│   ├── API_REFERENCE.md      # REST & gRPC API specification
+│   ├── BRD.md                # Business Requirements Document
+│   ├── DEPLOYMENT.md         # Production deployment guide
+│   ├── INFRASTRUCTURE.md     # Infrastructure configuration reference
+│   ├── LOCAL_DEPLOYMENT.md   # Local dev environment setup
+│   ├── MANUAL_TEST_CASES.md  # 20-category manual test cases
+│   ├── MARKETER_GUIDE.md     # User guide for marketers
+│   ├── ML_ENGINEER_GUIDE.md  # Onboarding for ML engineers
+│   ├── PREREQUISITES.md      # Platform installation guide
+│   ├── REQUEST_FLOW.md       # 22 request flow scenarios
+│   ├── RUST_ENGINEER_GUIDE.md # Onboarding for Rust engineers
+│   ├── SAAS_OPERATIONS.md    # Team structure & staffing guide
+│   ├── SRE_GUIDE.md          # Onboarding for SRE/DevOps
+│   └── TEST_STRATEGY.md      # Test strategy & quality metrics
+├── CONTRIBUTING.md           # Contributor guidelines
+├── CHANGELOG.md              # Version history
+├── SECURITY.md               # Security policy
+└── LICENSE                   # Proprietary license
 ```
 
 ## Documentation
 
-### Architecture & Deployment
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - Comprehensive end-to-end architecture documentation covering all modules, data flows, infrastructure, and integrations
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
-- **[Local Deployment](docs/LOCAL_DEPLOYMENT.md)** - Local development environment setup
-- **[Request Flow](docs/REQUEST_FLOW.md)** - Detailed request processing flow
-- **[Prerequisites](docs/PREREQUISITES.md)** - Installation prerequisites for each platform
-- **[SaaS Operations Guide](docs/SAAS_OPERATIONS.md)** - People, skills, and team structure needed to operate CampaignExpress as a SaaS product
+### Architecture & Design
+- **[Architecture Guide](docs/ARCHITECTURE.md)** — End-to-end architecture covering all modules, data flows, infrastructure, and integrations
+- **[Request Flow](docs/REQUEST_FLOW.md)** — 22 detailed request flow scenarios with data flow diagrams
+- **[Business Requirements (BRD)](docs/BRD.md)** — Functional requirements across 30+ feature areas
 
-### Operating Guides for Engineers (College Freshers)
-- **[Rust Engineer Guide](docs/RUST_ENGINEER_GUIDE.md)** - Getting started guide for Rust engineers covering language fundamentals, async programming, and development workflow
-- **[ML Engineer Guide](docs/ML_ENGINEER_GUIDE.md)** - Real-time ML inference operations, model deployment, and performance optimization for ML engineers
-- **[SRE Guide](docs/SRE_GUIDE.md)** - Kubernetes operations, monitoring, incident response, and infrastructure management for SRE specialists
+### API & Reference
+- **[API Reference](docs/API_REFERENCE.md)** — Complete REST (76+ endpoints) and gRPC API specification with request/response schemas
+- **[Infrastructure Reference](docs/INFRASTRUCTURE.md)** — Kubernetes, Terraform, Helm, Docker, and monitoring configuration reference
 
-### Testing Documentation
-- **[Test Strategy](docs/TEST_STRATEGY.md)** - Comprehensive test strategy covering test levels, types, environment setup, risk assessment, and quality metrics
-- **[Manual Test Cases](docs/MANUAL_TEST_CASES.md)** - Detailed manual test cases for all features including campaign management, real-time bidding, integrations, performance, and security testing
+### Deployment & Operations
+- **[Deployment Guide](docs/DEPLOYMENT.md)** — Production Kubernetes deployment instructions
+- **[Local Deployment](docs/LOCAL_DEPLOYMENT.md)** — Local development environment setup with Docker Compose
+- **[Prerequisites](docs/PREREQUISITES.md)** — Platform-specific installation guide (macOS, Linux, Windows)
+- **[Infrastructure Reference](docs/INFRASTRUCTURE.md)** — All deploy/ manifests: K8s, Terraform, Helm, Docker, monitoring, HAProxy, NATS, Redis, ClickHouse
+- **[SaaS Operations Guide](docs/SAAS_OPERATIONS.md)** — Team structure, skills matrix, and staffing by growth stage (18-60 people)
+
+### Operating Guides (Onboarding)
+- **[Rust Engineer Guide](docs/RUST_ENGINEER_GUIDE.md)** — Language fundamentals, async programming, development workflow
+- **[ML Engineer Guide](docs/ML_ENGINEER_GUIDE.md)** — Inference pipeline, model deployment, performance optimization
+- **[SRE Guide](docs/SRE_GUIDE.md)** — Kubernetes operations, monitoring, incident response, infrastructure management
+- **[Marketer Guide](docs/MARKETER_GUIDE.md)** — Campaign management, creative workflows, journey orchestration, reporting
+
+### Testing
+- **[Test Strategy](docs/TEST_STRATEGY.md)** — Test levels, types, environments, risk assessment, quality metrics
+- **[Manual Test Cases](docs/MANUAL_TEST_CASES.md)** — 20-category manual test cases (authentication, campaigns, RTB, security, etc.)
+
+### Project
+- **[Contributing](CONTRIBUTING.md)** — Development workflow, code standards, commit guidelines, PR process
+- **[Changelog](CHANGELOG.md)** — Version history and release notes
+- **[Security Policy](SECURITY.md)** — Vulnerability reporting, security architecture, compliance
+- **[License](LICENSE)** — Proprietary license
 
 ## Quick Start
 
