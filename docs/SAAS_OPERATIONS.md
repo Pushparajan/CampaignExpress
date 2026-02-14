@@ -174,7 +174,7 @@ The Platform Ops team ensures reliability, performance, security, and cost effic
   - Capacity planning and cost optimization
   - On-call rotation leadership (incident commander)
 
-**DevOps / SRE Engineer (1-2 people)**
+**SRE/DevOps Engineer (1-2 people)**
 - **Primary Focus**: CI/CD, monitoring, automation, incident response
 - **Required Skills**:
   - Kubernetes operations (debugging, scaling, upgrades)
@@ -410,7 +410,7 @@ Below is a priority-ranked list of the most critical skills for operating Campai
 | **P0 - Critical** | Rust Programming | Async/await, Tokio, concurrency, performance | Expert (8+/10) | 2-3 engineers |
 | **P0 - Critical** | Kubernetes Operations | Cluster management, StatefulSets, networking, HPA | Expert (8+/10) | 1-2 SREs |
 | **P0 - Critical** | Distributed Systems | Message queues (NATS), caching (Redis), consistency | Advanced (7+/10) | 2-3 engineers |
-| **P0 - Critical** | Real-Time ML Inference | Model serving, batching, latency optimization | Advanced (7+/10) | 1-2 ML engineers |
+| **P0 - Critical** | Real-time ML Inference | Model serving, batching, latency optimization | Advanced (7+/10) | 1-2 ML engineers |
 | **P1 - High** | Frontend Development | Next.js, React, TypeScript, component design | Advanced (7+/10) | 2-3 engineers |
 | **P1 - High** | Infrastructure as Code | Terraform, Helm, Kustomize, GitOps | Advanced (7+/10) | 2 SREs |
 | **P1 - High** | Observability & Monitoring | Prometheus, Grafana, distributed tracing, alerting | Advanced (6+/10) | 2 SREs |
@@ -528,7 +528,7 @@ Mature organization with specialized teams and clear growth trajectory.
 ### Hard-to-Find Roles (Plan Ahead)
 
 1. **Rust Engineers**: Limited talent pool; consider training strong C++/systems programmers
-2. **Real-Time ML Engineers**: Intersection of ML + low-latency systems is rare
+2. **Real-time ML Engineers**: Intersection of ML + low-latency systems is rare
 3. **Kubernetes/SRE Specialists**: High demand; competitive compensation required
 
 ### Build vs. Buy Considerations
