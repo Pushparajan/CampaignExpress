@@ -94,6 +94,10 @@ CampaignExpress/
 - **[ML Engineer Guide](docs/ML_ENGINEER_GUIDE.md)** - Real-time ML inference operations, model deployment, and performance optimization for ML engineers
 - **[SRE Guide](docs/SRE_GUIDE.md)** - Kubernetes operations, monitoring, incident response, and infrastructure management for SRE specialists
 
+### Testing Documentation
+- **[Test Strategy](docs/TEST_STRATEGY.md)** - Comprehensive test strategy covering test levels, types, environment setup, risk assessment, and quality metrics
+- **[Manual Test Cases](docs/MANUAL_TEST_CASES.md)** - Detailed manual test cases for all features including campaign management, real-time bidding, integrations, performance, and security testing
+
 ## Quick Start
 
 ### Prerequisites
