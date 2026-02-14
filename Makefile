@@ -1,6 +1,7 @@
 .PHONY: build build-release test lint fmt check docker-build docker-push \
        deploy-staging deploy-prod k8s-apply compose-up compose-down clean \
-       aws-deploy aws-infra aws-build aws-operators aws-services aws-security aws-app aws-monitor aws-health aws-destroy
+       aws-deploy aws-infra aws-build aws-operators aws-services aws-security aws-app aws-monitor aws-health aws-destroy \
+       local-setup local-seed local-reset
 
 # Variables
 IMAGE_NAME ?= campaign-express
@@ -69,6 +70,15 @@ run-local:
 	CAMPAIGN_EXPRESS__NPU__DEVICE=cpu \
 	CAMPAIGN_EXPRESS__AGENTS_PER_NODE=2 \
 	cargo run --bin campaign-express -- --api-only
+
+local-setup:
+	scripts/local-setup.sh
+
+local-seed:
+	scripts/local-setup.sh --seed-only
+
+local-reset:
+	scripts/local-setup.sh --reset
 
 # =============================================================================
 # Kubernetes Deployment

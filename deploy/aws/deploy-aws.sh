@@ -554,12 +554,13 @@ deploy_tls_certificates() {
 
 deploy_application() {
   banner "Stage 6: Deploying Campaign Express Application"
-  log "Backend (Rust/Axum/Tonic via Helm) + Frontend (Next.js 14)"
+  log "Backend (Rust/Axum/Tonic via Helm) + Frontend (Next.js 14) + Lambda@Edge"
 
   ensure_kubeconfig
 
   deploy_backend
   deploy_frontend
+  deploy_lambda_edge
 
   # Show deployment status
   echo ""
@@ -620,6 +621,127 @@ deploy_frontend() {
 
   wait_for_pods "app.kubernetes.io/name=campaign-express-ui" "$NAMESPACE" 180
   ok "Frontend deployed (Next.js 14, React 18, TanStack Query 5, Tailwind CSS)"
+}
+
+deploy_lambda_edge() {
+  log "Deploying Lambda@Edge (CloudFront bid request preprocessor)..."
+
+  local account_id
+  account_id=$(aws sts get-caller-identity --query Account --output text)
+  local fn_name="${PROJECT_NAME}-${ENVIRONMENT}-edge-preprocessor"
+  local role_name="${fn_name}-role"
+
+  # Create IAM role for Lambda@Edge (must be in us-east-1)
+  if ! aws iam get-role --role-name "$role_name" &>/dev/null; then
+    log "Creating Lambda@Edge IAM role..."
+    aws iam create-role \
+      --role-name "$role_name" \
+      --assume-role-policy-document '{
+        "Version": "2012-10-17",
+        "Statement": [{
+          "Effect": "Allow",
+          "Principal": {"Service": ["lambda.amazonaws.com", "edgelambda.amazonaws.com"]},
+          "Action": "sts:AssumeRole"
+        }]
+      }' >/dev/null
+    aws iam attach-role-policy \
+      --role-name "$role_name" \
+      --policy-arn "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    sleep 10  # Wait for IAM propagation
+  fi
+
+  local role_arn
+  role_arn=$(aws iam get-role --role-name "$role_name" --query 'Role.Arn' --output text)
+
+  # Create the Lambda function package (Node.js wrapper mirrors Rust wasm-edge logic)
+  local tmpdir
+  tmpdir=$(mktemp -d)
+
+  cat > "$tmpdir/index.mjs" <<'LAMBDA_EOF'
+// Lambda@Edge viewer-request handler for Campaign Express.
+// Validates OpenRTB bid requests at the edge, rejects invalid ones with 400.
+// Mirrors the logic in crates/wasm-edge/src/lib.rs.
+export const handler = async (event) => {
+  const request = event.Records[0].cf.request;
+
+  // Only validate POST /v1/bid — pass everything else through
+  if (request.method !== 'POST' || request.uri !== '/v1/bid') {
+    return request;
+  }
+
+  try {
+    const body = request.body && request.body.data
+      ? (request.body.encoding === 'base64'
+          ? Buffer.from(request.body.data, 'base64').toString()
+          : request.body.data)
+      : '';
+
+    const parsed = JSON.parse(body);
+
+    // Validate required OpenRTB fields
+    if (!parsed.id || !Array.isArray(parsed.imp) || parsed.imp.length === 0) {
+      return {
+        status: '400',
+        statusDescription: 'Bad Request',
+        body: JSON.stringify({ error: 'invalid OpenRTB: missing id or imp' }),
+        headers: {
+          'content-type': [{ key: 'Content-Type', value: 'application/json' }],
+        },
+      };
+    }
+
+    // Add edge metadata header
+    request.headers['x-edge-processed'] = [{ key: 'X-Edge-Processed', value: 'true' }];
+    return request;
+  } catch (e) {
+    return {
+      status: '400',
+      statusDescription: 'Bad Request',
+      body: JSON.stringify({ error: 'malformed JSON body' }),
+      headers: {
+        'content-type': [{ key: 'Content-Type', value: 'application/json' }],
+      },
+    };
+  }
+};
+LAMBDA_EOF
+
+  (cd "$tmpdir" && zip -j function.zip index.mjs >/dev/null)
+
+  # Lambda@Edge must be deployed in us-east-1
+  local lambda_region="us-east-1"
+
+  if aws lambda get-function --function-name "$fn_name" --region "$lambda_region" &>/dev/null; then
+    log "Updating Lambda@Edge function..."
+    aws lambda update-function-code \
+      --function-name "$fn_name" \
+      --zip-file "fileb://$tmpdir/function.zip" \
+      --region "$lambda_region" >/dev/null
+  else
+    log "Creating Lambda@Edge function..."
+    aws lambda create-function \
+      --function-name "$fn_name" \
+      --runtime "nodejs20.x" \
+      --role "$role_arn" \
+      --handler "index.handler" \
+      --zip-file "fileb://$tmpdir/function.zip" \
+      --timeout 5 \
+      --memory-size 128 \
+      --region "$lambda_region" \
+      --description "Campaign Express edge bid request validator" >/dev/null
+  fi
+
+  local version
+  version=$(aws lambda publish-version \
+    --function-name "$fn_name" \
+    --region "$lambda_region" \
+    --query 'Version' --output text)
+
+  rm -rf "$tmpdir"
+
+  ok "Lambda@Edge deployed: $fn_name (version $version)"
+  log "Attach to CloudFront distribution's viewer-request event:"
+  log "  arn:aws:lambda:${lambda_region}:${account_id}:function:${fn_name}:${version}"
 }
 
 # =============================================================================
@@ -823,6 +945,7 @@ print_summary() {
     Inference   ndarray 0.15 (CPU) + Inferentia 2/3 backends
     Monitoring  Prometheus + AlertManager + Grafana 10 + Tempo + Loki
     Security    cert-manager + External Secrets (AWS SM) + NetworkPolicies
+    Edge        Lambda@Edge (CloudFront bid request validation)
     Networking  HAProxy + AWS ALB Ingress Controller
 
   Useful commands:
