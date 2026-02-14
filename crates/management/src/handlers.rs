@@ -420,3 +420,101 @@ pub async fn sla_report(State(state): State<ManagementState>) -> Json<serde_json
 pub async fn list_backups(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {
     Json(state.store.list_backups())
 }
+
+// ─── Users ──────────────────────────────────────────────────────────────
+
+pub async fn list_users(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {
+    Json(state.store.list_users())
+}
+
+pub async fn get_user(
+    State(state): State<ManagementState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    state
+        .store
+        .get_user(id)
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
+}
+
+pub async fn create_user(
+    State(state): State<ManagementState>,
+    Json(req): Json<serde_json::Value>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let user = state.store.create_user(req, "admin");
+    metrics::counter!("management.users.created").increment(1);
+    (StatusCode::CREATED, Json(user))
+}
+
+pub async fn disable_user(
+    State(state): State<ManagementState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    state
+        .store
+        .disable_user(id, "admin")
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
+}
+
+pub async fn enable_user(
+    State(state): State<ManagementState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    state
+        .store
+        .enable_user(id, "admin")
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
+}
+
+pub async fn delete_user(State(state): State<ManagementState>, Path(id): Path<Uuid>) -> StatusCode {
+    if state.store.delete_user(id, "admin") {
+        metrics::counter!("management.users.deleted").increment(1);
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::NOT_FOUND
+    }
+}
+
+pub async fn update_user_role(
+    State(state): State<ManagementState>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let role = req.get("role").and_then(|v| v.as_str()).unwrap_or("Viewer");
+    state
+        .store
+        .update_user_role(id, role, "admin")
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
+}
+
+// ─── Invitations ────────────────────────────────────────────────────────
+
+pub async fn list_invitations(
+    State(state): State<ManagementState>,
+) -> Json<Vec<serde_json::Value>> {
+    Json(state.store.list_invitations())
+}
+
+pub async fn create_invitation(
+    State(state): State<ManagementState>,
+    Json(req): Json<serde_json::Value>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let invitation = state.store.create_invitation(req, "admin");
+    metrics::counter!("management.invitations.created").increment(1);
+    (StatusCode::CREATED, Json(invitation))
+}
+
+pub async fn revoke_invitation(
+    State(state): State<ManagementState>,
+    Path(id): Path<Uuid>,
+) -> StatusCode {
+    if state.store.revoke_invitation(id, "admin") {
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::NOT_FOUND
+    }
+}

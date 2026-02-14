@@ -2,7 +2,7 @@
 
 use crate::handlers::{self, ManagementState};
 use crate::store::ManagementStore;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post, put};
 use axum::Router;
 use std::sync::Arc;
 
@@ -141,6 +141,37 @@ pub fn management_router() -> Router {
         .route(
             "/api/v1/management/billing/onboarding/{tenant_id}",
             get(handlers::get_onboarding),
+        )
+        // Ops
+        // Users
+        .route(
+            "/api/v1/management/users",
+            get(handlers::list_users).post(handlers::create_user),
+        )
+        .route(
+            "/api/v1/management/users/{id}",
+            get(handlers::get_user).delete(handlers::delete_user),
+        )
+        .route(
+            "/api/v1/management/users/{id}/disable",
+            post(handlers::disable_user),
+        )
+        .route(
+            "/api/v1/management/users/{id}/enable",
+            post(handlers::enable_user),
+        )
+        .route(
+            "/api/v1/management/users/{id}/role",
+            put(handlers::update_user_role),
+        )
+        // Invitations
+        .route(
+            "/api/v1/management/invitations",
+            get(handlers::list_invitations).post(handlers::create_invitation),
+        )
+        .route(
+            "/api/v1/management/invitations/{id}",
+            delete(handlers::revoke_invitation),
         )
         // Ops
         .route("/api/v1/management/ops/status", get(handlers::ops_status))

@@ -324,6 +324,29 @@ export interface DataSubjectRequest {
   completed_at?: string;
 }
 
+// ─── User Types ───────────────────────────────────────────────────────
+
+export interface ManagedUser {
+  id: string;
+  email: string;
+  display_name: string;
+  status: "active" | "invited" | "disabled" | "locked";
+  role: string;
+  auth_provider: "local" | "oauth2" | "saml" | "api_key";
+  created_at: string;
+  last_login?: string;
+}
+
+export interface UserInvitation {
+  id: string;
+  email: string;
+  role: string;
+  status: "pending" | "accepted" | "expired" | "revoked";
+  invited_by: string;
+  created_at: string;
+  expires_at: string;
+}
+
 // ─── Billing Types ─────────────────────────────────────────────────────
 
 export interface PricingPlan {

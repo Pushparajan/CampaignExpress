@@ -16,6 +16,7 @@ import {
   Shield,
   CreditCard,
   HeartPulse,
+  Users,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -28,6 +29,7 @@ const navItems = [
   { href: "/cdp", label: "CDP Integrations", icon: Database },
   { href: "/experiments", label: "Experiments", icon: FlaskConical },
   { href: "/monitoring", label: "Monitoring", icon: Activity },
+  { href: "/users", label: "Users", icon: Users },
   { href: "/platform", label: "Platform", icon: Shield },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/ops", label: "Operations", icon: HeartPulse },

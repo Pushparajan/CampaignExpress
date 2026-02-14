@@ -27,6 +27,8 @@ import type {
   OnboardingProgress,
   Incident,
   BackupSchedule,
+  ManagedUser,
+  UserInvitation,
 } from "./types";
 
 class ApiClientError extends Error {
@@ -312,6 +314,65 @@ class ApiClient {
     return this.request<Experiment>("/api/v1/management/experiments", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  // Users
+  async listUsers(): Promise<ManagedUser[]> {
+    return this.request<ManagedUser[]>("/api/v1/management/users");
+  }
+
+  async getUser(id: string): Promise<ManagedUser> {
+    return this.request<ManagedUser>(`/api/v1/management/users/${id}`);
+  }
+
+  async createUser(data: { email: string; display_name: string; role: string }): Promise<ManagedUser> {
+    return this.request<ManagedUser>("/api/v1/management/users", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async disableUser(id: string): Promise<ManagedUser> {
+    return this.request<ManagedUser>(`/api/v1/management/users/${id}/disable`, {
+      method: "POST",
+    });
+  }
+
+  async enableUser(id: string): Promise<ManagedUser> {
+    return this.request<ManagedUser>(`/api/v1/management/users/${id}/enable`, {
+      method: "POST",
+    });
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    return this.request<void>(`/api/v1/management/users/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async updateUserRole(id: string, role: string): Promise<ManagedUser> {
+    return this.request<ManagedUser>(`/api/v1/management/users/${id}/role`, {
+      method: "PUT",
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  // Invitations
+  async listInvitations(): Promise<UserInvitation[]> {
+    return this.request<UserInvitation[]>("/api/v1/management/invitations");
+  }
+
+  async createInvitation(data: { email: string; role: string }): Promise<UserInvitation> {
+    return this.request<UserInvitation>("/api/v1/management/invitations", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async revokeInvitation(id: string): Promise<void> {
+    return this.request<void>(`/api/v1/management/invitations/${id}`, {
+      method: "DELETE",
     });
   }
 
