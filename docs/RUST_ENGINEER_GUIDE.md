@@ -58,12 +58,33 @@ crates/
 crates/
 ├── loyalty/              # Customer loyalty program logic
 ├── dsp/                  # DSP integrations (Google, Amazon, etc.)
-├── channels/             # Email, SMS, push notifications
+│   └── audience_proxy    # Segment-to-DSP mapping, incremental sync, budget pacing
+├── channels/             # Email, SMS, push, WhatsApp, web push, content cards
+│   └── content_studio    # HTML editor, localization, render-time personalization
 ├── management/           # Campaign CRUD operations
+│   ├── workspace         # Marketer UX: unified create, bulk ops, explainability
+│   └── governance        # Unified go-live gate (approval + preflight + policy)
 ├── journey/              # Customer journey orchestration
 ├── dco/                  # Dynamic Creative Optimization
+│   └── creative_export   # IAB placement validation, creative lineage tracking
 ├── cdp/                  # Customer Data Platform adapters
-└── ... (many more!)
+│   └── feature_store     # Online feature store with TTL staleness tracking
+├── personalization/      # Recommendation engine (CF, content-based, trending)
+│   └── decisioning       # Real-time multi-objective decisioning with explainability
+├── reporting/            # Report builder, budget tracking
+│   └── measurement       # Unified cross-channel events, experiment lift
+├── integrations/         # Asana, Jira, DAM, BI tools
+│   └── capabilities      # Connector registry, health monitoring, certification
+├── segmentation/         # Audience segmentation & rule engine
+├── intelligent-delivery/ # Smart delivery + global suppression lists
+├── rl-engine/            # OfferFit reinforcement learning connector
+├── mobile-sdk/           # Mobile SDK server-side support
+├── plugin-marketplace/   # Plugin marketplace & extensibility
+├── sdk-docs/             # API reference, guides, examples, search engine
+├── platform/             # Auth, RBAC, multi-tenancy
+├── billing/              # Usage metering, Stripe billing
+├── ops/                  # SLA tracking, health monitoring
+└── wasm-edge/            # Cloudflare Workers edge stub
 ```
 
 ### Your First Tasks

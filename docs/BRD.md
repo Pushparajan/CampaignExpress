@@ -1,7 +1,7 @@
 # Campaign Express — Business Requirements Document (BRD)
 
-**Version:** 1.0
-**Date:** 2026-02-13
+**Version:** 2.0
+**Date:** 2026-02-14
 **Status:** Approved
 **Owner:** Campaign Express Platform Team
 
@@ -38,6 +38,15 @@
    - [FR-SDK: Mobile SDK & Developer Tools](#fr-sdk-mobile-sdk--developer-tools)
    - [FR-PLG: Plugin Marketplace](#fr-plg-plugin-marketplace)
    - [FR-EDG: Edge Computing](#fr-edg-edge-computing)
+   - [FR-ACT: Unified Activation Traceability](#fr-act-unified-activation-traceability)
+   - [FR-1TO1: Real-Time Decision API](#fr-1to1-real-time-decision-api)
+   - [FR-OWN-CNT: Owned Content Personalization](#fr-own-cnt-owned-content-personalization)
+   - [FR-PRO: Profile & Feature Store](#fr-pro-profile--feature-store)
+   - [FR-PAID-PROXY: Paid Media Audience Proxy](#fr-paid-proxy-paid-media-audience-proxy)
+   - [FR-CREX: Creative Export & Lineage](#fr-crex-creative-export--lineage)
+   - [FR-GOV-UNI: Unified Governance Gate](#fr-gov-uni-unified-governance-gate)
+   - [FR-MSR-UNI: Unified Measurement](#fr-msr-uni-unified-measurement)
+   - [FR-CNX: Connector Runtime](#fr-cnx-connector-runtime)
 6. [Non-Functional Requirements](#6-non-functional-requirements)
 7. [Infrastructure Requirements](#7-infrastructure-requirements)
 8. [Data Requirements](#8-data-requirements)
@@ -617,6 +626,110 @@ trait CoLaNetProvider: Send + Sync {
 | FR-EDG-001 | Cloudflare Workers edge stub for bid preprocessing | P2 |
 | FR-EDG-002 | OpenRTB JSON validation at edge before origin routing | P2 |
 | FR-EDG-003 | Edge region tagging for latency-aware routing | P2 |
+
+---
+
+### FR-ACT: Unified Activation Traceability
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-ACT-001 | Every activation carries a `decision_id` linking back to the decisioning event | P0 |
+| FR-ACT-002 | Activations carry `campaign_id` for campaign-level attribution | P0 |
+| FR-ACT-003 | Activations carry `experiment_variant_id` for experiment measurement | P1 |
+
+---
+
+### FR-1TO1: Real-Time Decision API
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-1TO1-001 | Multi-objective optimization blending CTR, ConversionRate, Revenue, LTV, Engagement, Retention | P0 |
+| FR-1TO1-002 | Per-offer explainability with factor categories (SegmentMembership, BehavioralSignal, ContextualRelevance, ModelPrediction, BusinessRule, ExplorationBonus) | P0 |
+| FR-1TO1-003 | Simulation mode for what-if scenario testing (results not logged to analytics) | P1 |
+| FR-1TO1-004 | Decision audit trail with logged decisions retrievable by decision_id | P0 |
+| FR-1TO1-005 | Channel-aware offer filtering (only return offers valid for requested channel) | P1 |
+
+---
+
+### FR-OWN-CNT: Owned Content Personalization
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-OWN-CNT-001 | Render-time per-block content personalization with ordered rules and fallback | P0 |
+| FR-OWN-CNT-002 | Personalization conditions: SegmentMember, FeatureAbove, FeatureEquals, ChannelIs, Always | P0 |
+| FR-OWN-CNT-003 | Content Studio with HTML editor, localization engine, and variable browser | P1 |
+| FR-OWN-CNT-004 | Compliance checker for content validation before activation | P1 |
+
+---
+
+### FR-PRO: Profile & Feature Store
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-PRO-001 | Online feature store with typed feature definitions (Float, Integer, String, Boolean, StringList, FloatList) | P0 |
+| FR-PRO-002 | TTL-based staleness detection with Warning (>50% TTL) and Critical (>100% TTL) alerts | P0 |
+| FR-PRO-003 | Computed features: DaysSince, Ratio, Threshold, Sum, Average operations | P1 |
+| FR-PRO-004 | Feature categories: Behavioral, Demographic, Transactional, Engagement, Predictive | P1 |
+| FR-PRO-005 | Feature health summary reporting for monitoring dashboards | P1 |
+
+---
+
+### FR-PAID-PROXY: Paid Media Audience Proxy
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-PAID-PROXY-001 | Segment proxy mapping internal segment IDs to external DSP audience IDs | P0 |
+| FR-PAID-PROXY-002 | Incremental audience delta sync (additions and removals per sync cycle) | P0 |
+| FR-PAID-PROXY-003 | Creative export to DSP with status tracking (Pending → Confirmed → Failed) | P1 |
+| FR-PAID-PROXY-004 | Match-rate estimation with confidence levels (Low/Medium/High) | P1 |
+| FR-PAID-PROXY-005 | Real-time budget pacing with OnTrack/Underpacing/Overpacing/Exhausted status | P0 |
+
+---
+
+### FR-CREX: Creative Export & Lineage
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-CREX-001 | Creative export contracts with per-placement asset references | P0 |
+| FR-CREX-002 | IAB placement validation (width, height, max file size, allowed formats) | P0 |
+| FR-CREX-003 | 5 seeded placement rules: Leaderboard, Medium Rectangle, Mobile Banner, Facebook Feed, Instagram Story | P1 |
+| FR-CREX-004 | Creative lineage tracking: Created → Modified → Approved → ExportedToDsp → AssignedToCampaign | P0 |
+| FR-CREX-005 | Campaign assignment linking creatives to campaign IDs with lineage events | P1 |
+
+---
+
+### FR-GOV-UNI: Unified Governance Gate
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-GOV-UNI-001 | Single go-live decision combining revision approval + preflight + policy + task completion | P0 |
+| FR-GOV-UNI-002 | Governance audit trail with 10 action types (RevisionCreated through TaskCompleted) | P0 |
+| FR-GOV-UNI-003 | Blocker enumeration: list of specific reasons preventing go-live | P1 |
+| FR-GOV-UNI-004 | Integration with existing workflow engine and preflight checks | P0 |
+
+---
+
+### FR-MSR-UNI: Unified Measurement
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-MSR-UNI-001 | Standardized MeasurementEvent schema across all channels | P0 |
+| FR-MSR-UNI-002 | 9 event types: Delivered, Viewed, Clicked, Converted, Bounced, Revenue, Suppressed, ExperimentAssigned, Custom | P0 |
+| FR-MSR-UNI-003 | Cross-channel breakdown reporting with 10 dimensions (Channel, Campaign, Segment, Region, etc.) | P0 |
+| FR-MSR-UNI-004 | Experiment measurement with variant lift calculation vs. control | P1 |
+| FR-MSR-UNI-005 | Revenue, count, rate, and average metric computation | P1 |
+
+---
+
+### FR-CNX: Connector Runtime
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-CNX-001 | Connector capability declarations: operations, entity types, auth methods, rate limits | P0 |
+| FR-CNX-002 | Health monitoring with EMA error rate tracking and consecutive failure counting | P0 |
+| FR-CNX-003 | Health status: Healthy → Degraded → Unhealthy with configurable thresholds | P0 |
+| FR-CNX-004 | 12-test certification harness across 7 categories (Auth, DataRead, DataWrite, SchemaDiscovery, ErrorHandling, RateLimiting, HealthCheck) | P1 |
+| FR-CNX-005 | Connector health summary for operational dashboards | P1 |
 
 ---
 

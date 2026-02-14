@@ -25,10 +25,17 @@
 
 - **Real-Time Bidding**: OpenRTB 2.6 compliant bid request processing with sub-10ms inference
 - **ML-Powered Personalization**: CoLaNet Spiking Neural Network with hardware-agnostic inference
-- **Multi-Channel Activation**: Email, SMS, Push notifications, Webhooks, and DSP integrations
+- **Real-Time Decisioning**: Multi-objective optimization (CTR, revenue, LTV) with explainability and simulation
+- **Multi-Channel Activation**: Email, SMS, Push, WhatsApp, Web Push, Content Cards, In-App, Webhooks
+- **Content Studio**: HTML editor, localization, render-time per-block personalization
 - **Campaign Lifecycle Management**: Complete CRUD operations with workflow approvals
+- **Unified Governance**: Single go-live gate combining revision, preflight, policy, and task checks
 - **Customer Journey Orchestration**: State machine-driven customer experience flows
-- **Dynamic Creative Optimization**: Thompson Sampling-based variant testing
+- **Dynamic Creative Optimization**: Thompson Sampling-based variant testing with creative export/lineage
+- **Online Feature Store**: TTL-based feature management with staleness alerts and computed features
+- **Unified Measurement**: Standardized cross-channel events, breakdown reporting, experiment lift
+- **Paid Media Proxy**: Segment-to-DSP audience mapping with incremental sync and match-rate estimation
+- **Connector Runtime**: Capability registry, health monitoring, 12-test certification harness
 - **3-Tier Loyalty Program**: Green, Gold, and Reserve tiers with star earn/redeem
 - **Enterprise Features**: Multi-tenancy, RBAC, audit logging, billing integration
 
@@ -505,7 +512,120 @@ Third-party tool integrations.
 - Report publishing (BI tools)
 - Team notifications (Slack/Teams)
 
-### 4.4 Platform & Operations
+### 4.4 Advanced Feature Modules (v2)
+
+The following modules extend the core platform with advanced capabilities across decisioning, governance, measurement, and connector management.
+
+#### **Real-Time Decision API** (`crates/personalization/src/decisioning.rs`)
+Multi-objective optimization engine for real-time offer selection.
+
+**Capabilities**:
+- Multi-objective scoring: CTR, ConversionRate, Revenue, LTV, Engagement, Retention
+- Configurable objective blending with weighted scores
+- Per-offer explainability with factor categories (SegmentMembership, BehavioralSignal, ContextualRelevance, ModelPrediction, BusinessRule, ExplorationBonus)
+- Simulation mode for what-if scenario testing (not logged)
+- Decision logging with full audit trail
+
+**Flow**:
+```
+DecisionRequest (user_id, objectives, channel_filter, num_offers)
+    → Score candidates against each objective
+    → Blend scores with configurable weights
+    → Build explanation factors per offer
+    → Return ranked DecisionResponse with explanations
+```
+
+#### **Online Feature Store** (`crates/cdp/src/feature_store.rs`)
+TTL-based feature management with staleness tracking and computed features.
+
+**Capabilities**:
+- Feature definitions with type, category, source, and TTL
+- 6 seeded features: recency_score, lifetime_value, purchase_count_30d, email_open_rate, preferred_channel, geo_region
+- Staleness detection with Warning (>50% TTL) and Critical (>100% TTL) severity
+- Computed features: DaysSince, Ratio, Threshold, Sum, Average
+- Health summary reporting across all features
+
+**Feature Categories**: Behavioral, Demographic, Transactional, Engagement, Predictive
+
+#### **Audience Proxy** (`crates/dsp/src/audience_proxy.rs`)
+Segment-to-DSP audience mapping with incremental sync.
+
+**Capabilities**:
+- Proxy mapping: internal segment IDs → external DSP audience IDs
+- Incremental delta sync (additions/removals per sync cycle)
+- Creative export to DSP with confirmation tracking
+- Match-rate estimation with confidence levels (Low/Medium/High)
+- Budget pacing: daily budget tracking with OnTrack/Underpacing/Overpacing/Exhausted status
+
+**Supported DSP Targets**: TheTradeDesk, GoogleDV360, Xandr, AmazonDsp, MetaAds
+
+#### **Creative Export** (`crates/dco/src/creative_export.rs`)
+Standardized creative export with IAB placement validation and lineage tracking.
+
+**Capabilities**:
+- Export contracts with per-placement asset references and metadata
+- IAB placement validation rules (width, height, max file size, allowed formats)
+- 5 seeded placement rules: Leaderboard 728x90, Medium Rectangle 300x250, Mobile Banner 320x50, Facebook Feed 1200x628, Instagram Story 1080x1920
+- Creative lineage tracking: Created → Modified → Approved → ExportedToDsp → AssignedToCampaign
+- Campaign assignment with full audit trail
+
+#### **Unified Governance Gate** (`crates/management/src/governance.rs`)
+Single go-live decision combining multiple governance dimensions.
+
+**Gate Evaluation**:
+```
+UnifiedGovernanceGate::evaluate() → UnifiedGateResult {
+    revision_approved: bool,    // Approval workflow completed
+    preflight_passed: bool,     // Content/compliance checks passed
+    policy_passed: bool,        // Policy rules satisfied
+    tasks_complete: bool,       // All required tasks done
+    can_go_live: bool,          // AND of all above
+    blockers: Vec<String>,      // Reasons if blocked
+}
+```
+
+**Audit Trail**: GovernanceAuditEntry with 10 action types (RevisionCreated, Submitted, Approved, Rejected, PreflightRan, PolicyEvaluated, GateChecked, CommentAdded, TaskCreated, TaskCompleted)
+
+#### **Unified Measurement** (`crates/reporting/src/measurement.rs`)
+Standardized event schema for cross-channel measurement and experimentation.
+
+**Event Types**: Delivered, Viewed, Clicked, Converted, Bounced, Revenue, Suppressed, ExperimentAssigned, Custom
+
+**Capabilities**:
+- Standardized MeasurementEvent schema across all channels
+- Cross-channel breakdown reporting with 10 dimensions (Channel, Campaign, ActivationSource, Experiment, Variant, Segment, Region, DeviceType, DayOfWeek, HourOfDay)
+- Experiment measurement with variant lift calculation vs. control
+- Revenue, count, rate, and average metric computation
+
+#### **Connector Capability Registry** (`crates/integrations/src/capabilities.rs`)
+Connector health monitoring and certification framework.
+
+**Capabilities**:
+- Capability declarations: supported operations, entity types, auth methods, rate limits
+- Operations: Read, Write, Upsert, Delete, Search, Subscribe, SchemaDiscovery, HealthCheck
+- Health monitoring with EMA (exponential moving average) error rate tracking
+- Status: Healthy (0 consecutive failures) → Degraded (2-4 failures or >10% error rate) → Unhealthy (5+ failures)
+- 12-test certification harness across 7 categories (Authentication, DataRead, DataWrite, SchemaDiscovery, ErrorHandling, RateLimiting, HealthCheck)
+
+#### **Content Studio Enhancements** (`crates/channels/src/content_studio.rs`)
+Render-time per-block content personalization.
+
+**Capabilities**:
+- BlockPersonalization with ordered rules and fallback content
+- PersonalizationCondition types: SegmentMember, FeatureAbove, FeatureEquals, ChannelIs, Always
+- RenderTimePersonalizer engine for per-block content selection
+- Integration with feature store and segment membership data
+
+#### **Marketer Workspace UX** (`crates/management/src/workspace.rs`)
+Unified marketer experience with bulk operations and explainability.
+
+**Components**:
+- UnifiedCreateFlow: Single creation wizard for campaigns, journeys, experiments
+- BulkOperationEngine: Batch operations (pause, resume, archive, update budget) across campaigns
+- ExplainabilityEngine: Human-readable explanations for targeting, scoring, and delivery decisions
+- OperatorCalendar: Campaign scheduling visualization with conflict detection
+
+### 4.5 Platform & Operations
 
 #### **campaign-platform** (`crates/platform`)
 Multi-tenancy, authentication, and RBAC.
@@ -1840,6 +1960,6 @@ The modular crate structure enables independent development and testing of compo
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2024-01-15  
+**Document Version**: 2.0
+**Last Updated**: 2026-02-14
 **Maintainer**: Platform Engineering Team

@@ -45,18 +45,27 @@ CampaignExpress/
 │   ├── api-server/           # Axum REST + Tonic gRPC server
 │   ├── loyalty/              # 3-tier loyalty program (Green/Gold/Reserve)
 │   ├── dsp/                  # DSP integrations (TTD, DV360, Xandr, Amazon)
-│   ├── channels/             # Multi-channel output (email, push, SMS, webhooks)
+│   │   └── audience_proxy    # Segment proxy, incremental sync, match-rate, budget pacing
+│   ├── channels/             # Multi-channel output (email, push, SMS, WhatsApp, web push, webhooks)
+│   │   └── content_studio    # Content Studio: HTML editor, localization, render-time personalization
 │   ├── management/           # Campaign CRUD, creatives, auth, workflows, approvals
+│   │   ├── workspace         # Marketer UX: unified create flow, bulk ops, explainability, calendar
+│   │   └── governance        # Unified governance gate (revision + preflight + policy + tasks)
 │   ├── journey/              # Journey orchestration & state machines
 │   ├── dco/                  # Dynamic Creative Optimization + brand guidelines + asset library
+│   │   └── creative_export   # Creative export contracts, IAB placement validation, lineage tracking
 │   ├── cdp/                  # CDP adapters (Salesforce, Adobe, Segment, Tealium, Hightouch)
+│   │   └── feature_store     # Online feature store with TTL staleness, computed features
 │   ├── platform/             # Auth, RBAC, multi-tenancy
 │   ├── billing/              # Usage metering, Stripe billing, plan management
 │   ├── ops/                  # SLA tracking, health monitoring, operational metrics
 │   ├── personalization/      # Recommendation engine (CF, content-based, trending)
+│   │   └── decisioning       # Real-time decision API: multi-objective optimization, simulation
 │   ├── segmentation/         # Audience segmentation & rule engine
 │   ├── reporting/            # Report builder, budget tracking, scheduled exports
+│   │   └── measurement       # Unified measurement: cross-channel events, experiment lift
 │   ├── integrations/         # Asana, Jira, AEM Assets, Bynder, Aprimo, Power BI, Excel
+│   │   └── capabilities      # Connector capability registry, health monitoring, certification
 │   ├── intelligent-delivery/ # Smart delivery optimization + global suppression lists
 │   ├── rl-engine/            # Reinforcement learning + OfferFit connector
 │   ├── mobile-sdk/           # Mobile SDK server-side support
@@ -241,19 +250,28 @@ curl http://localhost:8080/api/v1/inference/providers
 | **RL Engine** | OfferFit connector with Thompson Sampling fallback, reward signals |
 | **Loyalty** | 3-tier program (Green/Gold/Reserve), star earning/redemption, tier upgrades |
 | **DSP Integration** | The Trade Desk, Google DV360, Xandr, Amazon DSP |
-| **Channels** | Email (SendGrid), push notifications, SMS (Twilio), in-app, webhooks |
+| **Channels** | Email (SendGrid), push, SMS (Twilio), in-app, WhatsApp, web push, content cards, webhooks |
+| **Content Studio** | HTML editor, localization engine, variable browser, render-time personalization per block |
 | **Journey Orchestration** | State machines, triggers (event/segment/schedule), branching, delays |
 | **DCO** | Modular creative assembly, Thompson Sampling, variant performance tracking |
+| **Creative Export** | IAB placement validation, export contracts, creative lineage tracking |
 | **Brand Guidelines** | Color palette, typography, tone-of-voice, logo usage validation |
-| **Asset Library** | Versioned asset storage, search, folder management |
+| **Asset Library** | Versioned asset storage, search, folder management, asset ops studio |
 | **Campaign Workflows** | 9-stage lifecycle, multi-step approvals, role-based review |
+| **Unified Governance** | Single go-live gate combining revision + preflight + policy + task checks |
+| **Marketer Workspace** | Unified create flow, bulk operations, explainability engine, operator calendar |
 | **Budget Tracking** | Pacing alerts (80%/100%/daily), ROAS/ROI calculation |
 | **Report Builder** | 10 report types, scheduled exports (CSV/JSON/Excel), 5 templates |
+| **Unified Measurement** | Standardized cross-channel events, breakdown reporting, experiment lift |
 | **CDP** | Bidirectional sync with Salesforce, Adobe, Segment, Tealium, Hightouch |
+| **Feature Store** | Online feature store with TTL staleness, computed features, health monitoring |
 | **Segmentation** | Rule-based audience segmentation with real-time evaluation |
 | **Personalization** | Real-time offer personalization with ML-powered scoring |
+| **Real-Time Decisioning** | Multi-objective optimization (CTR/revenue/LTV), explainability, simulation mode |
 | **Suppression** | Global per-channel suppression lists with expiry |
+| **Paid Media Proxy** | Segment-to-DSP audience proxy, incremental sync, match-rate estimation, budget pacing |
 | **Integrations** | Asana, Jira, AEM Assets, Bynder, Aprimo, Power BI, Excel |
+| **Connector Runtime** | Capability registry, EMA health monitoring, 12-test certification harness |
 | **Platform** | Multi-tenant auth, RBAC, API key management, audit logging |
 | **Billing** | Usage metering, Stripe integration, plan management |
 | **Experimentation** | A/B/n testing, deterministic assignment, significance checking |
