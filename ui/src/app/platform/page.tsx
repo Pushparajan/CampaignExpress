@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Tenant, Role, ComplianceStatus, DataSubjectRequest } from "@/lib/types";
+import { formatDate } from "@/lib/format-date";
 
 export default function PlatformPage() {
   const { data: tenants = [] } = useQuery<Tenant[]>({
@@ -172,7 +173,7 @@ export default function PlatformPage() {
               </p>
               {c.last_audit && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Last: {new Date(c.last_audit).toLocaleDateString()}
+                  Last: {formatDate(c.last_audit)}
                 </p>
               )}
             </div>
@@ -234,7 +235,7 @@ export default function PlatformPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-400">
-                    {new Date(dsr.requested_at).toLocaleDateString()}
+                    {formatDate(dsr.requested_at)}
                   </td>
                 </tr>
               ))}

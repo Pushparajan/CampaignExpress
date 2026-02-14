@@ -5,6 +5,7 @@ import { Palette, Plus, Layers, Sparkles, Loader2, AlertCircle } from "lucide-re
 import StatusBadge from "@/components/status-badge";
 import { api } from "@/lib/api";
 import type { DcoTemplate } from "@/lib/types";
+import { formatDate } from "@/lib/format-date";
 
 export default function DcoPage() {
   const { data: templates, isLoading, error } = useQuery({
@@ -86,7 +87,7 @@ export default function DcoPage() {
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-3">
-              Created {new Date(template.created_at).toLocaleDateString()}
+              Created {formatDate(template.created_at)}
             </p>
           </div>
         ))}

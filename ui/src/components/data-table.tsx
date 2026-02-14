@@ -23,7 +23,8 @@ interface DataTableProps<T> {
 
 type SortDirection = "asc" | "desc";
 
-export default function DataTable<T extends Record<string, unknown>>({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default function DataTable<T extends Record<string, any>>({
   columns,
   data,
   onRowClick,
@@ -85,6 +86,10 @@ export default function DataTable<T extends Record<string, unknown>>({
                     col.className
                   )}
                   onClick={col.sortable ? () => handleSort(col.key) : undefined}
+                  onKeyDown={col.sortable ? (e) => { if (e.key === "Enter" || e.key === " ") handleSort(col.key); } : undefined}
+                  tabIndex={col.sortable ? 0 : undefined}
+                  role={col.sortable ? "button" : undefined}
+                  aria-sort={col.sortable && sortKey === col.key ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
                 >
                   <div className="flex items-center gap-1">
                     {col.label}
@@ -115,10 +120,13 @@ export default function DataTable<T extends Record<string, unknown>>({
                 <tr
                   key={rowKey ? rowKey(row) : idx}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  onKeyDown={onRowClick ? (e) => { if (e.key === "Enter" || e.key === " ") onRowClick(row); } : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  role={onRowClick ? "button" : undefined}
                   className={clsx(
                     "transition-colors",
                     onRowClick
-                      ? "cursor-pointer hover:bg-gray-700/40"
+                      ? "cursor-pointer hover:bg-gray-700/40 focus:bg-gray-700/40 focus:outline-none focus:ring-1 focus:ring-primary/50"
                       : "hover:bg-gray-750/20"
                   )}
                 >
@@ -144,7 +152,7 @@ export default function DataTable<T extends Record<string, unknown>>({
 
       {/* Pagination */}
       {sortedData.length > pageSize && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-700">
+        <nav aria-label="Table pagination" className="flex items-center justify-between px-4 py-3 border-t border-gray-700">
           <p className="text-xs text-gray-500">
             Showing {currentPage * pageSize + 1} to{" "}
             {Math.min((currentPage + 1) * pageSize, sortedData.length)} of{" "}
@@ -154,6 +162,7 @@ export default function DataTable<T extends Record<string, unknown>>({
             <button
               onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
               disabled={currentPage === 0}
+              aria-label="Previous page"
               className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -162,6 +171,8 @@ export default function DataTable<T extends Record<string, unknown>>({
               <button
                 key={page}
                 onClick={() => setCurrentPage(page)}
+                aria-label={`Page ${page + 1}`}
+                aria-current={page === currentPage ? "page" : undefined}
                 className={clsx(
                   "w-8 h-8 rounded-lg text-xs font-medium transition-colors",
                   page === currentPage
@@ -177,12 +188,13 @@ export default function DataTable<T extends Record<string, unknown>>({
                 setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
               }
               disabled={currentPage >= totalPages - 1}
+              aria-label="Next page"
               className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-        </div>
+        </nav>
       )}
     </div>
   );

@@ -13,6 +13,7 @@ import {
 import StatusBadge from "@/components/status-badge";
 import { api } from "@/lib/api";
 import type { CdpPlatformConfig, SyncEvent } from "@/lib/types";
+import { formatDateTime } from "@/lib/format-date";
 
 function formatPlatformName(platform: string): string {
   return platform
@@ -144,7 +145,7 @@ export default function CdpPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-sm text-gray-400">
-                    {new Date(sync.started_at).toLocaleString()}
+                    {formatDateTime(sync.started_at)}
                   </td>
                 </tr>
               ))}

@@ -126,6 +126,7 @@ export default function CampaignsPage() {
             onClick={() => router.push(`/campaigns/${row.id}`)}
             className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
             title="Edit"
+            aria-label="Edit campaign"
           >
             <Edit className="w-4 h-4" />
           </button>
@@ -134,6 +135,7 @@ export default function CampaignsPage() {
               onClick={() => pauseMutation.mutate(row.id)}
               className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors"
               title="Pause"
+              aria-label="Pause campaign"
             >
               <Pause className="w-4 h-4" />
             </button>
@@ -142,6 +144,7 @@ export default function CampaignsPage() {
               onClick={() => resumeMutation.mutate(row.id)}
               className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors"
               title="Resume"
+              aria-label="Resume campaign"
             >
               <Play className="w-4 h-4" />
             </button>
@@ -150,6 +153,7 @@ export default function CampaignsPage() {
             onClick={() => setDeleteTarget(row)}
             className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-colors"
             title="Delete"
+            aria-label="Delete campaign"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -190,6 +194,7 @@ export default function CampaignsPage() {
             <input
               type="text"
               placeholder="Search campaigns..."
+              aria-label="Search campaigns"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full sm:w-64 pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
@@ -223,22 +228,20 @@ export default function CampaignsPage() {
       </div>
 
       {/* Table */}
-      <DataTable
+      <DataTable<Campaign>
         columns={columns}
-        data={filteredCampaigns as unknown as Record<string, unknown>[]}
-        onRowClick={(row) =>
-          router.push(`/campaigns/${(row as unknown as Campaign).id}`)
-        }
-        rowKey={(row) => (row as unknown as Campaign).id}
+        data={filteredCampaigns}
+        onRowClick={(row) => router.push(`/campaigns/${row.id}`)}
+        rowKey={(row) => row.id}
         emptyMessage="No campaigns found"
         pageSize={10}
       />
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
           <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 id="delete-dialog-title" className="text-lg font-semibold text-white">
               Delete Campaign
             </h3>
             <p className="mt-2 text-sm text-gray-400">
@@ -286,7 +289,7 @@ function CreateCampaignModal({ onClose }: { onClose: () => void }) {
     name: "",
     budget: "",
     daily_budget: "",
-    pacing: "even" as const,
+    pacing: "even" as "even" | "accelerated" | "asap",
     targeting: '{\n  "geo": ["US"],\n  "segments": [],\n  "devices": ["mobile", "desktop"],\n  "floor_price": 0.50\n}',
     schedule_start: "",
     schedule_end: "",

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { PricingPlan, Invoice } from "@/lib/types";
+import { formatDate } from "@/lib/format-date";
 
 export default function BillingPage() {
   const { data: plans = [] } = useQuery<PricingPlan[]>({
@@ -133,11 +134,11 @@ export default function BillingPage() {
                     {inv.line_items.length} items
                   </td>
                   <td className="px-4 py-3 text-gray-400">
-                    {new Date(inv.issued_at).toLocaleDateString()}
+                    {formatDate(inv.issued_at)}
                   </td>
                   <td className="px-4 py-3 text-gray-400">
                     {inv.paid_at
-                      ? new Date(inv.paid_at).toLocaleDateString()
+                      ? formatDate(inv.paid_at)
                       : "—"}
                   </td>
                 </tr>

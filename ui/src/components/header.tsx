@@ -67,6 +67,7 @@ export default function Header() {
             <input
               type="text"
               placeholder="Search campaigns..."
+              aria-label="Search campaigns"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-64 pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
@@ -77,6 +78,9 @@ export default function Header() {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
+              aria-expanded={dropdownOpen}
+              aria-haspopup="menu"
+              aria-label="User menu"
               className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
             >
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
@@ -87,7 +91,7 @@ export default function Header() {
             </button>
 
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1 z-50">
+              <div role="menu" className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1 z-50">
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
