@@ -288,11 +288,8 @@ impl SlaTracker {
 
         // Snapshot target data first to avoid holding DashMap read-locks while
         // calling methods that also access `self.targets`.
-        let target_snapshots: Vec<SlaTarget> = self
-            .targets
-            .iter()
-            .map(|r| r.value().clone())
-            .collect();
+        let target_snapshots: Vec<SlaTarget> =
+            self.targets.iter().map(|r| r.value().clone()).collect();
 
         let targets: Vec<serde_json::Value> = target_snapshots
             .iter()
@@ -400,7 +397,12 @@ impl SlaTracker {
         let target_info: Vec<(String, u32)> = self
             .targets
             .iter()
-            .map(|e| (e.key().clone(), parse_window_days(&e.value().measurement_window)))
+            .map(|e| {
+                (
+                    e.key().clone(),
+                    parse_window_days(&e.value().measurement_window),
+                )
+            })
             .collect();
         for (name, window_days) in target_info {
             let computed = self.compute_uptime(&name, window_days);
