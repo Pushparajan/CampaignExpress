@@ -334,6 +334,72 @@ pub async fn list_tenants(State(state): State<ManagementState>) -> Json<Vec<serd
     Json(state.store.list_tenants())
 }
 
+pub async fn get_tenant(
+    State(state): State<ManagementState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    state
+        .store
+        .get_tenant(id)
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
+}
+
+pub async fn create_tenant(
+    State(state): State<ManagementState>,
+    Json(req): Json<serde_json::Value>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let tenant = state.store.create_tenant(req, "admin");
+    metrics::counter!("management.tenants.created").increment(1);
+    (StatusCode::CREATED, Json(tenant))
+}
+
+pub async fn update_tenant(
+    State(state): State<ManagementState>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    state
+        .store
+        .update_tenant(id, req, "admin")
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
+}
+
+pub async fn delete_tenant(
+    State(state): State<ManagementState>,
+    Path(id): Path<Uuid>,
+) -> StatusCode {
+    if state.store.delete_tenant(id, "admin") {
+        metrics::counter!("management.tenants.deleted").increment(1);
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::NOT_FOUND
+    }
+}
+
+pub async fn suspend_tenant(
+    State(state): State<ManagementState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    state
+        .store
+        .suspend_tenant(id, "admin")
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
+}
+
+pub async fn activate_tenant(
+    State(state): State<ManagementState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    state
+        .store
+        .activate_tenant(id, "admin")
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
+}
+
 // ─── Platform: Roles ────────────────────────────────────────────────────
 
 pub async fn list_roles(State(state): State<ManagementState>) -> Json<Vec<serde_json::Value>> {

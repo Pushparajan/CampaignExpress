@@ -29,6 +29,8 @@ import type {
   BackupSchedule,
   ManagedUser,
   UserInvitation,
+  TenantCreatePayload,
+  TenantUpdatePayload,
 } from "./types";
 
 class ApiClientError extends Error {
@@ -379,6 +381,42 @@ class ApiClient {
   // Platform — Tenants
   async listTenants(): Promise<Tenant[]> {
     return this.request<Tenant[]>("/api/v1/management/platform/tenants");
+  }
+
+  async getTenant(id: string): Promise<Tenant> {
+    return this.request<Tenant>(`/api/v1/management/platform/tenants/${id}`);
+  }
+
+  async createTenant(data: TenantCreatePayload): Promise<Tenant> {
+    return this.request<Tenant>("/api/v1/management/platform/tenants", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTenant(id: string, data: TenantUpdatePayload): Promise<Tenant> {
+    return this.request<Tenant>(`/api/v1/management/platform/tenants/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTenant(id: string): Promise<void> {
+    return this.request<void>(`/api/v1/management/platform/tenants/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async suspendTenant(id: string): Promise<Tenant> {
+    return this.request<Tenant>(`/api/v1/management/platform/tenants/${id}/suspend`, {
+      method: "POST",
+    });
+  }
+
+  async activateTenant(id: string): Promise<Tenant> {
+    return this.request<Tenant>(`/api/v1/management/platform/tenants/${id}/activate`, {
+      method: "POST",
+    });
   }
 
   // Platform — Roles

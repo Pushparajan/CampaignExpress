@@ -104,10 +104,24 @@ pub fn management_router() -> Router {
             "/api/v1/management/experiments/{id}",
             get(handlers::get_experiment),
         )
-        // Platform
+        // Platform — Tenants
         .route(
             "/api/v1/management/platform/tenants",
-            get(handlers::list_tenants),
+            get(handlers::list_tenants).post(handlers::create_tenant),
+        )
+        .route(
+            "/api/v1/management/platform/tenants/{id}",
+            get(handlers::get_tenant)
+                .put(handlers::update_tenant)
+                .delete(handlers::delete_tenant),
+        )
+        .route(
+            "/api/v1/management/platform/tenants/{id}/suspend",
+            post(handlers::suspend_tenant),
+        )
+        .route(
+            "/api/v1/management/platform/tenants/{id}/activate",
+            post(handlers::activate_tenant),
         )
         .route(
             "/api/v1/management/platform/roles",

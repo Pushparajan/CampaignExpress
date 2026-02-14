@@ -280,6 +280,14 @@ export interface Tenant {
   updated_at: string;
 }
 
+export interface TenantCreatePayload {
+  name: string;
+  slug: string;
+  pricing_tier: Tenant["pricing_tier"];
+}
+
+export type TenantUpdatePayload = Partial<Pick<Tenant, "name" | "slug" | "status" | "pricing_tier">>;
+
 export interface TenantSettings {
   max_campaigns: number;
   max_users: number;

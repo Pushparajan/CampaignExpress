@@ -1269,6 +1269,131 @@ impl ManagementStore {
         self.tenants.iter().map(|r| r.value().clone()).collect()
     }
 
+    pub fn get_tenant(&self, id: Uuid) -> Option<serde_json::Value> {
+        self.tenants.get(&id).map(|r| r.value().clone())
+    }
+
+    pub fn create_tenant(&self, mut req: serde_json::Value, actor: &str) -> serde_json::Value {
+        let id = Uuid::new_v4();
+        let now = Utc::now().to_rfc3339();
+        req["id"] = serde_json::json!(id);
+        req["created_at"] = serde_json::json!(now);
+        req["updated_at"] = serde_json::json!(now);
+        if req.get("status").is_none() {
+            req["status"] = serde_json::json!("active");
+        }
+        if req.get("owner_id").is_none() {
+            req["owner_id"] = serde_json::json!(Uuid::new_v4());
+        }
+        if req.get("settings").is_none() {
+            req["settings"] = serde_json::json!({
+                "max_campaigns": 10,
+                "max_users": 5,
+                "max_offers_per_hour": 1_000_000,
+                "max_api_calls_per_day": 50_000,
+                "features_enabled": ["campaigns", "analytics"],
+                "data_retention_days": 90,
+            });
+        }
+        if req.get("usage").is_none() {
+            req["usage"] = serde_json::json!({
+                "campaigns_active": 0,
+                "users_count": 0,
+                "offers_served_today": 0,
+                "api_calls_today": 0,
+                "storage_bytes": 0,
+            });
+        }
+        self.tenants.insert(id, req.clone());
+        self.log_audit(
+            actor,
+            AuditAction::Create,
+            "tenant",
+            &id.to_string(),
+            serde_json::json!({"name": req.get("name")}),
+        );
+        req
+    }
+
+    pub fn update_tenant(
+        &self,
+        id: Uuid,
+        updates: serde_json::Value,
+        actor: &str,
+    ) -> Option<serde_json::Value> {
+        self.tenants.get_mut(&id).map(|mut entry| {
+            let tenant = entry.value_mut();
+            if let Some(name) = updates.get("name") {
+                tenant["name"] = name.clone();
+            }
+            if let Some(slug) = updates.get("slug") {
+                tenant["slug"] = slug.clone();
+            }
+            if let Some(status) = updates.get("status") {
+                tenant["status"] = status.clone();
+            }
+            if let Some(tier) = updates.get("pricing_tier") {
+                tenant["pricing_tier"] = tier.clone();
+            }
+            if let Some(settings) = updates.get("settings") {
+                tenant["settings"] = settings.clone();
+            }
+            tenant["updated_at"] = serde_json::json!(Utc::now().to_rfc3339());
+            self.log_audit(
+                actor,
+                AuditAction::Update,
+                "tenant",
+                &id.to_string(),
+                serde_json::json!({"fields": updates}),
+            );
+            tenant.clone()
+        })
+    }
+
+    pub fn delete_tenant(&self, id: Uuid, actor: &str) -> bool {
+        let removed = self.tenants.remove(&id).is_some();
+        if removed {
+            self.log_audit(
+                actor,
+                AuditAction::Delete,
+                "tenant",
+                &id.to_string(),
+                serde_json::json!({}),
+            );
+        }
+        removed
+    }
+
+    pub fn suspend_tenant(&self, id: Uuid, actor: &str) -> Option<serde_json::Value> {
+        self.tenants.get_mut(&id).map(|mut entry| {
+            entry.value_mut()["status"] = serde_json::json!("suspended");
+            entry.value_mut()["updated_at"] = serde_json::json!(Utc::now().to_rfc3339());
+            self.log_audit(
+                actor,
+                AuditAction::Update,
+                "tenant",
+                &id.to_string(),
+                serde_json::json!({"action": "suspend"}),
+            );
+            entry.value().clone()
+        })
+    }
+
+    pub fn activate_tenant(&self, id: Uuid, actor: &str) -> Option<serde_json::Value> {
+        self.tenants.get_mut(&id).map(|mut entry| {
+            entry.value_mut()["status"] = serde_json::json!("active");
+            entry.value_mut()["updated_at"] = serde_json::json!(Utc::now().to_rfc3339());
+            self.log_audit(
+                actor,
+                AuditAction::Update,
+                "tenant",
+                &id.to_string(),
+                serde_json::json!({"action": "activate"}),
+            );
+            entry.value().clone()
+        })
+    }
+
     pub fn list_roles(&self) -> Vec<serde_json::Value> {
         self.roles.iter().map(|r| r.value().clone()).collect()
     }
