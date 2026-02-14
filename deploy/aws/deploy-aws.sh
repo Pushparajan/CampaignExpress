@@ -1,12 +1,23 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Campaign Express — Full AWS Deployment Script
+# Campaign Express — Full AWS Deployment Script (End-to-End)
 # =============================================================================
-# Deploys the complete application stack on AWS via CLI:
-#   1. Infrastructure (Terraform): VPC, EKS, ECR, ElastiCache Redis, Secrets
-#   2. Container image: Build & push to ECR
-#   3. In-cluster services: NATS, ClickHouse, monitoring stack
-#   4. Application: Campaign Express via Helm
+# Deploys the COMPLETE application stack on AWS via CLI:
+#
+#   Stage 1 — infra:      VPC, EKS, ECR, ElastiCache Redis, Secrets Manager
+#   Stage 2 — build:      Docker images (backend + frontend) → ECR
+#   Stage 3 — operators:  cert-manager, External Secrets Operator, AWS LB Controller
+#   Stage 4 — services:   NATS JetStream, ClickHouse, Redis, HAProxy, Neuron plugin
+#   Stage 5 — security:   Network Policies, External Secrets (AWS SM), TLS certs
+#   Stage 6 — app:        Campaign Express backend (Helm) + Next.js frontend
+#   Stage 7 — monitor:    Prometheus, AlertManager, Grafana, Tempo, Loki
+#
+# Tech stack deployed:
+#   Rust 1.77 (Tokio/Axum/Tonic/Prost) · Next.js 14 (React 18/TanStack/Tailwind)
+#   NATS JetStream · Redis 7 (ElastiCache) · ClickHouse 24 · ndarray ML inference
+#   Prometheus · Grafana 10 · AlertManager · Tempo · Loki
+#   cert-manager · External Secrets · K8s NetworkPolicies · HAProxy
+#   AWS Neuron (Inferentia 2/3) device plugin
 #
 # Prerequisites:
 #   - AWS CLI v2 configured (aws configure / AWS_PROFILE)
@@ -17,16 +28,19 @@
 #   - jq
 #
 # Usage:
-#   ./deploy-aws.sh                    # Full deployment (all stages)
-#   ./deploy-aws.sh --stage infra      # Only provision AWS infrastructure
-#   ./deploy-aws.sh --stage build      # Only build & push Docker image
-#   ./deploy-aws.sh --stage services   # Only deploy in-cluster services
-#   ./deploy-aws.sh --stage app        # Only deploy the application
-#   ./deploy-aws.sh --stage monitor    # Only deploy monitoring stack
-#   ./deploy-aws.sh --destroy          # Tear down everything
+#   ./deploy-aws.sh                       # Full deployment (all stages)
+#   ./deploy-aws.sh --stage infra         # Only provision AWS infrastructure
+#   ./deploy-aws.sh --stage build         # Only build & push Docker images
+#   ./deploy-aws.sh --stage operators     # Only install K8s operators
+#   ./deploy-aws.sh --stage services      # Only deploy in-cluster services
+#   ./deploy-aws.sh --stage security      # Only deploy network policies + secrets
+#   ./deploy-aws.sh --stage app           # Only deploy the application
+#   ./deploy-aws.sh --stage monitor       # Only deploy monitoring stack
+#   ./deploy-aws.sh --destroy             # Tear down everything
 #
 #   Environment overrides:
 #     AWS_REGION=us-west-2 ENVIRONMENT=staging ./deploy-aws.sh
+#     ENABLE_INFERENTIA=true ./deploy-aws.sh     # Deploy Neuron device plugin
 # =============================================================================
 set -euo pipefail
 
@@ -43,6 +57,7 @@ PROJECT_NAME="${PROJECT_NAME:-campaign-express}"
 CLUSTER_NAME="${PROJECT_NAME}-${ENVIRONMENT}-eks"
 NAMESPACE="campaign-express"
 IMAGE_TAG="${IMAGE_TAG:-$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo 'latest')}"
+ENABLE_INFERENTIA="${ENABLE_INFERENTIA:-false}"
 
 # Colors
 RED='\033[0;31m'
@@ -135,12 +150,14 @@ check_prerequisites() {
   ok "AWS Account: $account_id (Region: $AWS_REGION)"
 }
 
-# ── Stage 1: Infrastructure (Terraform) ────────────────────────────────────
+# =============================================================================
+# Stage 1: Infrastructure (Terraform)
+# =============================================================================
 
 deploy_infrastructure() {
   banner "Stage 1: Provisioning AWS Infrastructure"
+  log "VPC + EKS + ECR + ElastiCache Redis + Secrets Manager + IAM"
 
-  # Create S3 backend bucket + DynamoDB lock table if they don't exist
   ensure_tf_backend
 
   cd "$TF_DIR"
@@ -166,6 +183,8 @@ deploy_infrastructure() {
   REDIS_ENDPOINT=$(terraform output -raw redis_endpoint)
   export REDIS_PORT
   REDIS_PORT=$(terraform output -raw redis_port)
+  export ESO_ROLE_ARN
+  ESO_ROLE_ARN=$(terraform output -raw external_secrets_role_arn)
 
   cd "$PROJECT_ROOT"
 
@@ -176,7 +195,7 @@ deploy_infrastructure() {
     --name "$CLUSTER_NAME" \
     --alias "$CLUSTER_NAME"
 
-  ok "Infrastructure provisioned successfully"
+  ok "Infrastructure provisioned"
 }
 
 ensure_tf_backend() {
@@ -185,10 +204,12 @@ ensure_tf_backend() {
 
   if ! aws s3api head-bucket --bucket "$bucket" 2>/dev/null; then
     log "Creating Terraform state bucket: $bucket"
-    aws s3api create-bucket \
-      --bucket "$bucket" \
-      --region "$AWS_REGION" \
-      $([ "$AWS_REGION" != "us-east-1" ] && echo "--create-bucket-configuration LocationConstraint=$AWS_REGION")
+    if [ "$AWS_REGION" = "us-east-1" ]; then
+      aws s3api create-bucket --bucket "$bucket" --region "$AWS_REGION"
+    else
+      aws s3api create-bucket --bucket "$bucket" --region "$AWS_REGION" \
+        --create-bucket-configuration "LocationConstraint=$AWS_REGION"
+    fi
 
     aws s3api put-bucket-versioning \
       --bucket "$bucket" \
@@ -222,12 +243,14 @@ ensure_tf_backend() {
   fi
 }
 
-# ── Stage 2: Build & Push Docker Image ─────────────────────────────────────
+# =============================================================================
+# Stage 2: Build & Push Docker Images (Backend + Frontend)
+# =============================================================================
 
 build_and_push() {
-  banner "Stage 2: Building & Pushing Docker Image"
+  banner "Stage 2: Building & Pushing Docker Images"
+  log "Backend (Rust 1.77 multi-stage) + Frontend (Next.js 14)"
 
-  # Resolve ECR URL if not already set
   if [ -z "${ECR_REPO_URL:-}" ]; then
     ECR_REPO_URL=$(get_tf_output "ecr_repository_url")
   fi
@@ -241,26 +264,133 @@ build_and_push() {
   aws ecr get-login-password --region "$AWS_REGION" | \
     docker login --username AWS --password-stdin "$ecr_registry"
 
-  # Build
-  log "Building Docker image: $ECR_REPO_URL:$IMAGE_TAG"
+  # ── Backend image ──────────────────────────────────────────────────────
+  log "Building backend image: $ECR_REPO_URL:$IMAGE_TAG"
   docker build \
     -t "$ECR_REPO_URL:$IMAGE_TAG" \
     -t "$ECR_REPO_URL:latest" \
     -f "$DEPLOY_DIR/docker/Dockerfile" \
     "$PROJECT_ROOT"
 
-  # Push with retries
-  log "Pushing image to ECR..."
+  log "Pushing backend image..."
   retry 4 2 docker push "$ECR_REPO_URL:$IMAGE_TAG"
   retry 4 2 docker push "$ECR_REPO_URL:latest"
+  ok "Backend image pushed: $ECR_REPO_URL:$IMAGE_TAG"
 
-  ok "Image pushed: $ECR_REPO_URL:$IMAGE_TAG"
+  # ── Frontend image ────────────────────────────────────────────────────
+  # Create UI ECR repo if it doesn't exist
+  local ui_repo="${PROJECT_NAME}-ui"
+  local ui_repo_url="${ecr_registry}/${ui_repo}"
+  if ! aws ecr describe-repositories --repository-names "$ui_repo" --region "$AWS_REGION" &>/dev/null; then
+    log "Creating ECR repository for frontend: $ui_repo"
+    aws ecr create-repository --repository-name "$ui_repo" --region "$AWS_REGION" \
+      --image-scanning-configuration scanOnPush=true >/dev/null
+  fi
+
+  log "Building frontend image: $ui_repo_url:$IMAGE_TAG"
+  docker build \
+    -t "$ui_repo_url:$IMAGE_TAG" \
+    -t "$ui_repo_url:latest" \
+    --build-arg "NEXT_PUBLIC_API_URL=http://campaign-express.${NAMESPACE}.svc.cluster.local:8080" \
+    -f "$SCRIPT_DIR/ui.Dockerfile" \
+    "$PROJECT_ROOT"
+
+  log "Pushing frontend image..."
+  retry 4 2 docker push "$ui_repo_url:$IMAGE_TAG"
+  retry 4 2 docker push "$ui_repo_url:latest"
+  ok "Frontend image pushed: $ui_repo_url:$IMAGE_TAG"
+
+  export UI_REPO_URL="$ui_repo_url"
 }
 
-# ── Stage 3: Deploy In-Cluster Services ────────────────────────────────────
+# =============================================================================
+# Stage 3: Install Kubernetes Operators
+# =============================================================================
+
+deploy_operators() {
+  banner "Stage 3: Installing Kubernetes Operators"
+  log "cert-manager + External Secrets Operator + AWS Load Balancer Controller"
+
+  ensure_kubeconfig
+
+  install_cert_manager
+  install_external_secrets_operator
+  install_aws_lb_controller
+
+  ok "All operators installed"
+}
+
+install_cert_manager() {
+  log "Installing cert-manager (Let's Encrypt TLS)..."
+
+  helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
+  helm repo update jetstack
+
+  helm upgrade --install cert-manager jetstack/cert-manager \
+    --namespace cert-manager \
+    --create-namespace \
+    --set crds.enabled=true \
+    --set global.leaderElection.namespace=cert-manager \
+    --wait \
+    --timeout 5m
+
+  wait_for_pods "app.kubernetes.io/instance=cert-manager" "cert-manager" 120
+  ok "cert-manager installed"
+}
+
+install_external_secrets_operator() {
+  log "Installing External Secrets Operator (AWS Secrets Manager integration)..."
+
+  helm repo add external-secrets https://charts.external-secrets.io 2>/dev/null || true
+  helm repo update external-secrets
+
+  # Resolve IRSA role ARN
+  local eso_role_arn="${ESO_ROLE_ARN:-$(get_tf_output external_secrets_role_arn 2>/dev/null || echo '')}"
+
+  local set_flags=()
+  if [ -n "$eso_role_arn" ] && [ "$eso_role_arn" != "null" ]; then
+    set_flags+=(--set "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn=$eso_role_arn")
+  fi
+
+  helm upgrade --install external-secrets external-secrets/external-secrets \
+    --namespace external-secrets \
+    --create-namespace \
+    "${set_flags[@]}" \
+    --wait \
+    --timeout 5m
+
+  wait_for_pods "app.kubernetes.io/instance=external-secrets" "external-secrets" 120
+  ok "External Secrets Operator installed"
+}
+
+install_aws_lb_controller() {
+  log "Installing AWS Load Balancer Controller (ALB Ingress)..."
+
+  helm repo add eks https://aws.github.io/eks-charts 2>/dev/null || true
+  helm repo update eks
+
+  local cluster_name="$CLUSTER_NAME"
+
+  helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+    --namespace kube-system \
+    --set "clusterName=$cluster_name" \
+    --set "region=$AWS_REGION" \
+    --set "vpcId=$(get_tf_output vpc_id 2>/dev/null || echo '')" \
+    --set serviceAccount.create=true \
+    --set serviceAccount.name=aws-load-balancer-controller \
+    --wait \
+    --timeout 5m
+
+  ok "AWS Load Balancer Controller installed"
+}
+
+# =============================================================================
+# Stage 4: Deploy In-Cluster Services
+# =============================================================================
 
 deploy_services() {
-  banner "Stage 3: Deploying In-Cluster Services"
+  banner "Stage 4: Deploying In-Cluster Services"
+  log "NATS JetStream · ClickHouse 24 · Redis 7 · HAProxy · Neuron plugin"
 
   ensure_kubeconfig
 
@@ -268,7 +398,7 @@ deploy_services() {
   log "Creating namespace '$NAMESPACE'..."
   kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-  # Create gp3 StorageClass
+  # Create gp3 StorageClass for EBS CSI
   deploy_storage_class
 
   # Deploy services in dependency order
@@ -276,12 +406,13 @@ deploy_services() {
   deploy_clickhouse
   deploy_redis_in_cluster
   deploy_haproxy
+  deploy_neuron_plugin
 
   ok "All in-cluster services deployed"
 }
 
 deploy_storage_class() {
-  log "Creating gp3 StorageClass..."
+  log "Creating gp3 StorageClass (EBS CSI)..."
   kubectl apply -f - <<'EOF'
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -303,42 +434,144 @@ EOF
 }
 
 deploy_nats() {
-  log "Deploying NATS cluster..."
+  log "Deploying NATS JetStream cluster (3 replicas, async-nats 0.35)..."
   kubectl apply -f "$DEPLOY_DIR/nats/nats-deployment.yaml"
   wait_for_pods "app.kubernetes.io/name=nats" "$NAMESPACE" 180
 }
 
 deploy_clickhouse() {
-  log "Deploying ClickHouse..."
+  log "Deploying ClickHouse 24 (2 replicas, analytics DB)..."
   kubectl apply -f "$DEPLOY_DIR/clickhouse/clickhouse-deployment.yaml"
   wait_for_pods "app.kubernetes.io/name=clickhouse" "$NAMESPACE" 300
 }
 
 deploy_redis_in_cluster() {
-  # If ElastiCache is provisioned, skip in-cluster Redis.
-  # We still deploy it as a fallback / for environments without ElastiCache.
-  if [ -n "${REDIS_ENDPOINT:-}" ] && [ "$REDIS_ENDPOINT" != "null" ]; then
+  # If ElastiCache is provisioned, skip in-cluster Redis
+  if [ -z "${REDIS_ENDPOINT:-}" ]; then
+    REDIS_ENDPOINT=$(get_tf_output "redis_endpoint" 2>/dev/null || echo "")
+  fi
+
+  if [ -n "$REDIS_ENDPOINT" ] && [ "$REDIS_ENDPOINT" != "null" ]; then
     log "ElastiCache Redis detected ($REDIS_ENDPOINT) — skipping in-cluster Redis"
     return 0
   fi
 
-  log "Deploying in-cluster Redis (no ElastiCache endpoint found)..."
+  log "Deploying in-cluster Redis 7 cluster (6 nodes, LRU)..."
   kubectl apply -f "$DEPLOY_DIR/redis/redis-deployment.yaml"
   wait_for_pods "app.kubernetes.io/name=redis" "$NAMESPACE" 300
 }
 
 deploy_haproxy() {
-  log "Deploying HAProxy..."
+  log "Deploying HAProxy load balancer (leastconn + rate limiting)..."
   kubectl apply -f "$DEPLOY_DIR/haproxy/haproxy-deployment.yaml"
   wait_for_pods "app.kubernetes.io/name=haproxy" "$NAMESPACE" 120
 }
 
-# ── Stage 4: Deploy Application (Helm) ─────────────────────────────────────
+deploy_neuron_plugin() {
+  if [ "$ENABLE_INFERENTIA" != "true" ]; then
+    log "Inferentia disabled — skipping Neuron device plugin (set ENABLE_INFERENTIA=true to enable)"
+    return 0
+  fi
 
-deploy_application() {
-  banner "Stage 4: Deploying Campaign Express Application"
+  log "Deploying AWS Neuron device plugin (Inferentia 2/3)..."
+  kubectl apply -f "$SCRIPT_DIR/neuron-device-plugin.yaml"
+  ok "Neuron device plugin deployed"
+}
+
+# =============================================================================
+# Stage 5: Security — Network Policies, External Secrets, TLS
+# =============================================================================
+
+deploy_security() {
+  banner "Stage 5: Deploying Security Layer"
+  log "Network Policies · External Secrets (AWS SM) · cert-manager certs"
 
   ensure_kubeconfig
+
+  deploy_network_policies
+  deploy_external_secrets
+  deploy_tls_certificates
+
+  ok "Security layer deployed"
+}
+
+deploy_network_policies() {
+  log "Applying Kubernetes NetworkPolicies (zero-trust baseline)..."
+
+  if [ -f "$DEPLOY_DIR/k8s/base/network-policies.yaml" ]; then
+    kubectl apply -f "$DEPLOY_DIR/k8s/base/network-policies.yaml"
+    ok "8 NetworkPolicies applied (deny-all + allow rules)"
+  else
+    warn "network-policies.yaml not found — skipping"
+  fi
+}
+
+deploy_external_secrets() {
+  log "Deploying ExternalSecrets (AWS Secrets Manager)..."
+
+  # Patch region into the manifest
+  local eso_manifest="$SCRIPT_DIR/external-secrets-aws.yaml"
+  local secret_prefix="${PROJECT_NAME}-${ENVIRONMENT}"
+
+  # Apply with region substitution
+  sed \
+    -e "s|region: us-east-1|region: $AWS_REGION|g" \
+    -e "s|campaign-express-prod/|${secret_prefix}/|g" \
+    "$eso_manifest" | kubectl apply -f -
+
+  # Create the IRSA service account for ESO in the app namespace
+  local eso_role_arn="${ESO_ROLE_ARN:-$(get_tf_output external_secrets_role_arn 2>/dev/null || echo '')}"
+  if [ -n "$eso_role_arn" ] && [ "$eso_role_arn" != "null" ]; then
+    kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-secrets-sa
+  namespace: $NAMESPACE
+  annotations:
+    eks.amazonaws.com/role-arn: "$eso_role_arn"
+EOF
+    ok "ExternalSecrets service account created with IRSA"
+  fi
+
+  ok "ExternalSecrets deployed (redis, clickhouse, nats, twilio, sendgrid)"
+}
+
+deploy_tls_certificates() {
+  log "Applying cert-manager ClusterIssuers and Certificates..."
+
+  if [ -f "$DEPLOY_DIR/k8s/base/cert-manager.yaml" ]; then
+    kubectl apply -f "$DEPLOY_DIR/k8s/base/cert-manager.yaml"
+    ok "cert-manager ClusterIssuers + Certificate applied"
+  else
+    warn "cert-manager.yaml not found — skipping"
+  fi
+}
+
+# =============================================================================
+# Stage 6: Deploy Application (Backend + Frontend)
+# =============================================================================
+
+deploy_application() {
+  banner "Stage 6: Deploying Campaign Express Application"
+  log "Backend (Rust/Axum/Tonic via Helm) + Frontend (Next.js 14)"
+
+  ensure_kubeconfig
+
+  deploy_backend
+  deploy_frontend
+
+  # Show deployment status
+  echo ""
+  log "Deployment status:"
+  kubectl get deployments -n "$NAMESPACE"
+  echo ""
+  kubectl get pods -n "$NAMESPACE" --no-headers | head -10
+  echo "  ... (showing first 10 pods)"
+}
+
+deploy_backend() {
+  log "Installing Campaign Express backend via Helm..."
 
   # Resolve values from Terraform outputs
   if [ -z "${ECR_REPO_URL:-}" ]; then
@@ -361,7 +594,6 @@ deploy_application() {
     set_flags+=(--set "redis.url=rediss://${REDIS_ENDPOINT}:6379")
   fi
 
-  log "Installing/upgrading Campaign Express via Helm..."
   helm upgrade --install campaign-express \
     "$DEPLOY_DIR/helm/campaign-express" \
     --namespace "$NAMESPACE" \
@@ -371,21 +603,32 @@ deploy_application() {
     --wait \
     --timeout 10m
 
-  ok "Campaign Express deployed"
-
-  # Show deployment status
-  echo ""
-  log "Deployment status:"
-  kubectl get deployments -n "$NAMESPACE"
-  echo ""
-  kubectl get pods -n "$NAMESPACE" -l app.kubernetes.io/name=campaign-express --no-headers | head -5
-  echo "  ... (showing first 5 pods)"
+  ok "Backend deployed (20 replicas, HPA 10-40)"
 }
 
-# ── Stage 5: Deploy Monitoring Stack ───────────────────────────────────────
+deploy_frontend() {
+  log "Deploying Next.js 14 frontend..."
+
+  local account_id
+  account_id=$(aws sts get-caller-identity --query Account --output text)
+  local ecr_registry="${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+  local ui_image="${UI_REPO_URL:-${ecr_registry}/${PROJECT_NAME}-ui}:${IMAGE_TAG}"
+
+  # Patch image in UI deployment and apply
+  sed "s|image: campaign-express-ui:latest|image: ${ui_image}|g" \
+    "$SCRIPT_DIR/ui-deployment.yaml" | kubectl apply -f -
+
+  wait_for_pods "app.kubernetes.io/name=campaign-express-ui" "$NAMESPACE" 180
+  ok "Frontend deployed (Next.js 14, React 18, TanStack Query 5, Tailwind CSS)"
+}
+
+# =============================================================================
+# Stage 7: Deploy Monitoring Stack
+# =============================================================================
 
 deploy_monitoring() {
-  banner "Stage 5: Deploying Monitoring Stack"
+  banner "Stage 7: Deploying Monitoring & Observability Stack"
+  log "Prometheus · AlertManager · Grafana 10 · Tempo (tracing) · Loki (logging)"
 
   ensure_kubeconfig
 
@@ -393,8 +636,8 @@ deploy_monitoring() {
   log "Deploying Prometheus..."
   kubectl apply -f "$DEPLOY_DIR/monitoring/prometheus/prometheus-deployment.yaml"
 
-  # AlertManager
-  log "Deploying AlertManager..."
+  # AlertManager (HA — 2 replicas)
+  log "Deploying AlertManager (11 alert rules)..."
   if [ -f "$DEPLOY_DIR/monitoring/alertmanager/alertmanager-deployment.yaml" ]; then
     kubectl apply -f "$DEPLOY_DIR/monitoring/alertmanager/alertmanager-config.yaml"
     kubectl apply -f "$DEPLOY_DIR/monitoring/alertmanager/alert-rules.yaml"
@@ -402,25 +645,27 @@ deploy_monitoring() {
   fi
 
   # Grafana
-  log "Deploying Grafana..."
+  log "Deploying Grafana 10 (dashboards + datasources)..."
   kubectl apply -f "$DEPLOY_DIR/monitoring/grafana/grafana-deployment.yaml"
 
-  # Tempo (tracing)
+  # Tempo (distributed tracing)
   if [ -f "$DEPLOY_DIR/monitoring/tracing/tempo-deployment.yaml" ]; then
-    log "Deploying Tempo..."
+    log "Deploying Tempo (tracing)..."
     kubectl apply -f "$DEPLOY_DIR/monitoring/tracing/tempo-deployment.yaml"
   fi
 
-  # Loki (logging)
+  # Loki (log aggregation)
   if [ -f "$DEPLOY_DIR/monitoring/logging/loki-stack.yaml" ]; then
-    log "Deploying Loki..."
+    log "Deploying Loki (logging)..."
     kubectl apply -f "$DEPLOY_DIR/monitoring/logging/loki-stack.yaml"
   fi
 
   ok "Monitoring stack deployed"
 }
 
-# ── Destroy ─────────────────────────────────────────────────────────────────
+# =============================================================================
+# Destroy
+# =============================================================================
 
 destroy() {
   banner "DESTROYING All Resources"
@@ -433,13 +678,22 @@ destroy() {
     exit 0
   fi
 
-  # Delete Helm release
-  log "Removing Helm release..."
+  # Delete Helm releases
+  log "Removing Helm releases..."
   helm uninstall campaign-express --namespace "$NAMESPACE" 2>/dev/null || true
+  helm uninstall aws-load-balancer-controller --namespace kube-system 2>/dev/null || true
+  helm uninstall external-secrets --namespace external-secrets 2>/dev/null || true
+  helm uninstall cert-manager --namespace cert-manager 2>/dev/null || true
 
   # Delete K8s resources
-  log "Deleting Kubernetes resources..."
+  log "Deleting Kubernetes namespaces..."
   kubectl delete namespace "$NAMESPACE" --ignore-not-found=true --timeout=120s 2>/dev/null || true
+  kubectl delete namespace external-secrets --ignore-not-found=true --timeout=60s 2>/dev/null || true
+  kubectl delete namespace cert-manager --ignore-not-found=true --timeout=60s 2>/dev/null || true
+
+  # Delete UI ECR repo
+  log "Deleting frontend ECR repository..."
+  aws ecr delete-repository --repository-name "${PROJECT_NAME}-ui" --region "$AWS_REGION" --force 2>/dev/null || true
 
   # Destroy Terraform infrastructure
   log "Destroying Terraform infrastructure..."
@@ -455,22 +709,24 @@ destroy() {
   ok "All resources destroyed"
 }
 
-# ── Health Check ────────────────────────────────────────────────────────────
+# =============================================================================
+# Health Check
+# =============================================================================
 
 health_check() {
-  banner "Health Check"
+  banner "Health Check — Full Stack"
 
   log "Cluster info:"
   kubectl cluster-info 2>/dev/null || { err "Cannot reach cluster"; return 1; }
 
   echo ""
-  log "Namespace '$NAMESPACE' resources:"
+  log "Namespace '$NAMESPACE' — all resources:"
   kubectl get all -n "$NAMESPACE" 2>/dev/null || true
 
   echo ""
   log "Pod status summary:"
   kubectl get pods -n "$NAMESPACE" -o json 2>/dev/null | \
-    jq -r '.items | group_by(.status.phase) | .[] | "\(.[0].status.phase): \(length)"' 2>/dev/null || true
+    jq -r '.items | group_by(.status.phase) | .[] | "  \(.[0].status.phase): \(length)"' 2>/dev/null || true
 
   echo ""
   log "Service endpoints:"
@@ -480,18 +736,47 @@ health_check() {
   log "HPA status:"
   kubectl get hpa -n "$NAMESPACE" 2>/dev/null || true
 
-  # Test health endpoint if port-forward is available
+  echo ""
+  log "Ingress status:"
+  kubectl get ingress -n "$NAMESPACE" 2>/dev/null || true
+
+  echo ""
+  log "Operators:"
+  echo -n "  cert-manager:       "; kubectl get pods -n cert-manager --no-headers 2>/dev/null | wc -l | xargs -I{} echo "{} pods"
+  echo -n "  external-secrets:   "; kubectl get pods -n external-secrets --no-headers 2>/dev/null | wc -l | xargs -I{} echo "{} pods"
+  echo -n "  lb-controller:      "; kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller --no-headers 2>/dev/null | wc -l | xargs -I{} echo "{} pods"
+
+  echo ""
+  log "ExternalSecrets sync status:"
+  kubectl get externalsecrets -n "$NAMESPACE" 2>/dev/null || true
+
+  echo ""
+  log "NetworkPolicies:"
+  kubectl get networkpolicies -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l | xargs -I{} echo "  {} policies applied"
+
+  # Test health endpoint
   local pod
   pod=$(kubectl get pod -n "$NAMESPACE" -l app.kubernetes.io/name=campaign-express \
     -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
   if [ -n "$pod" ]; then
-    log "Testing health endpoint on pod $pod..."
+    log "Testing backend health endpoint on pod $pod..."
     kubectl exec -n "$NAMESPACE" "$pod" -- curl -sf http://localhost:8080/health 2>/dev/null && \
-      ok "Health check passed" || warn "Health check failed or curl not available"
+      ok "Backend health check passed" || warn "Backend health check failed or curl not available"
+  fi
+
+  local ui_pod
+  ui_pod=$(kubectl get pod -n "$NAMESPACE" -l app.kubernetes.io/name=campaign-express-ui \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+  if [ -n "$ui_pod" ]; then
+    log "Testing frontend on pod $ui_pod..."
+    kubectl exec -n "$NAMESPACE" "$ui_pod" -- wget -q --spider http://localhost:3000/ 2>/dev/null && \
+      ok "Frontend health check passed" || warn "Frontend health check failed"
   fi
 }
 
-# ── Utilities ───────────────────────────────────────────────────────────────
+# =============================================================================
+# Utilities
+# =============================================================================
 
 ensure_kubeconfig() {
   if ! kubectl cluster-info &>/dev/null; then
@@ -518,59 +803,81 @@ print_summary() {
   local ecr_url="${ECR_REPO_URL:-$(get_tf_output ecr_repository_url 2>/dev/null || echo 'N/A')}"
   local redis="${REDIS_ENDPOINT:-$(get_tf_output redis_endpoint 2>/dev/null || echo 'N/A')}"
 
-  echo "  Project:      $PROJECT_NAME"
-  echo "  Environment:  $ENVIRONMENT"
-  echo "  Region:       $AWS_REGION"
-  echo "  EKS Cluster:  $CLUSTER_NAME"
-  echo "  ECR Image:    $ecr_url:$IMAGE_TAG"
-  echo "  Redis:        $redis"
-  echo "  Namespace:    $NAMESPACE"
-  echo ""
-  echo "  Useful commands:"
-  echo "    kubectl get pods -n $NAMESPACE"
-  echo "    kubectl logs -f deploy/campaign-express -n $NAMESPACE"
-  echo "    kubectl port-forward svc/campaign-express 8080:8080 -n $NAMESPACE"
-  echo "    kubectl port-forward svc/grafana 3000:3000 -n $NAMESPACE"
-  echo ""
+  cat <<SUMMARY
+  Project:        $PROJECT_NAME
+  Environment:    $ENVIRONMENT
+  Region:         $AWS_REGION
+  EKS Cluster:    $CLUSTER_NAME
+  Backend Image:  $ecr_url:$IMAGE_TAG
+  Frontend Image: ${UI_REPO_URL:-N/A}:$IMAGE_TAG
+  Redis:          $redis
+  Namespace:      $NAMESPACE
+  Inferentia:     $ENABLE_INFERENTIA
+
+  Stack:
+    Backend     Rust 1.77 (Tokio 1.36 / Axum 0.7 / Tonic 0.12 / Prost 0.13)
+    Frontend    Next.js 14 / React 18 / TanStack Query 5 / Tailwind CSS
+    Messaging   NATS JetStream (async-nats 0.35)
+    Cache       Redis 7 (ElastiCache cluster mode) + DashMap L1
+    Analytics   ClickHouse 24
+    Inference   ndarray 0.15 (CPU) + Inferentia 2/3 backends
+    Monitoring  Prometheus + AlertManager + Grafana 10 + Tempo + Loki
+    Security    cert-manager + External Secrets (AWS SM) + NetworkPolicies
+    Networking  HAProxy + AWS ALB Ingress Controller
+
+  Useful commands:
+    kubectl get pods -n $NAMESPACE
+    kubectl logs -f deploy/campaign-express -n $NAMESPACE
+    kubectl port-forward svc/campaign-express 8080:8080 -n $NAMESPACE
+    kubectl port-forward svc/campaign-express-ui 3000:3000 -n $NAMESPACE
+    kubectl port-forward svc/grafana 3000:3000 -n $NAMESPACE
+
+SUMMARY
 }
 
 usage() {
   cat <<EOF
-Campaign Express — AWS Deployment Script
+Campaign Express — AWS Deployment Script (End-to-End)
 
 Usage: $(basename "$0") [OPTIONS]
 
 Options:
   --stage <stage>    Run a specific deployment stage:
-                       infra     — Provision AWS infrastructure (Terraform)
-                       build     — Build & push Docker image to ECR
-                       services  — Deploy in-cluster services (NATS, ClickHouse, etc.)
-                       app       — Deploy Campaign Express application (Helm)
-                       monitor   — Deploy monitoring stack
+                       infra      — Provision AWS infra (VPC, EKS, ECR, ElastiCache)
+                       build      — Build & push Docker images (backend + frontend)
+                       operators  — Install K8s operators (cert-manager, ESO, ALB)
+                       services   — Deploy in-cluster services (NATS, ClickHouse, etc.)
+                       security   — Deploy NetworkPolicies, ExternalSecrets, TLS
+                       app        — Deploy application (backend Helm + frontend)
+                       monitor    — Deploy monitoring stack
   --destroy          Tear down all resources
-  --health           Run health checks
+  --health           Run full-stack health checks
   --help             Show this help message
 
 Environment Variables:
-  AWS_REGION         AWS region (default: us-east-1)
-  ENVIRONMENT        Deployment environment: dev|staging|prod (default: prod)
-  PROJECT_NAME       Project name prefix (default: campaign-express)
-  IMAGE_TAG          Docker image tag (default: git short SHA)
+  AWS_REGION           AWS region (default: us-east-1)
+  ENVIRONMENT          Deployment environment: dev|staging|prod (default: prod)
+  PROJECT_NAME         Project name prefix (default: campaign-express)
+  IMAGE_TAG            Docker image tag (default: git short SHA)
+  ENABLE_INFERENTIA    Deploy AWS Neuron device plugin (default: false)
 
 Examples:
-  # Full deployment
+  # Full end-to-end deployment (all 7 stages)
   ./deploy-aws.sh
 
   # Deploy only infrastructure
   ./deploy-aws.sh --stage infra
 
-  # Deploy to staging in us-west-2
-  AWS_REGION=us-west-2 ENVIRONMENT=staging ./deploy-aws.sh
+  # Deploy to staging in us-west-2 with Inferentia
+  AWS_REGION=us-west-2 ENVIRONMENT=staging ENABLE_INFERENTIA=true ./deploy-aws.sh
 
-  # Build and push image only
+  # Build and push images only
   ./deploy-aws.sh --stage build
 
-  # Check health of deployment
+  # Install operators + security layer
+  ./deploy-aws.sh --stage operators && ./deploy-aws.sh --stage security
+
+  # Full-stack health check
   ./deploy-aws.sh --health
 
   # Tear everything down
@@ -578,7 +885,9 @@ Examples:
 EOF
 }
 
-# ── Main ────────────────────────────────────────────────────────────────────
+# =============================================================================
+# Main
+# =============================================================================
 
 main() {
   local stage=""
@@ -596,9 +905,10 @@ main() {
   done
 
   banner "Campaign Express — AWS Deployment"
-  echo "  Region:      $AWS_REGION"
-  echo "  Environment: $ENVIRONMENT"
-  echo "  Image Tag:   $IMAGE_TAG"
+  echo "  Region:       $AWS_REGION"
+  echo "  Environment:  $ENVIRONMENT"
+  echo "  Image Tag:    $IMAGE_TAG"
+  echo "  Inferentia:   $ENABLE_INFERENTIA"
   echo ""
 
   check_prerequisites
@@ -614,16 +924,20 @@ main() {
   fi
 
   case "$stage" in
-    infra)    deploy_infrastructure ;;
-    build)    build_and_push ;;
-    services) deploy_services ;;
-    app)      deploy_application ;;
-    monitor)  deploy_monitoring ;;
+    infra)     deploy_infrastructure ;;
+    build)     build_and_push ;;
+    operators) deploy_operators ;;
+    services)  deploy_services ;;
+    security)  deploy_security ;;
+    app)       deploy_application ;;
+    monitor)   deploy_monitoring ;;
     "")
-      # Full deployment — all stages
+      # Full end-to-end deployment — all 7 stages
       deploy_infrastructure
       build_and_push
+      deploy_operators
       deploy_services
+      deploy_security
       deploy_application
       deploy_monitoring
       health_check

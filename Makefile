@@ -1,6 +1,6 @@
 .PHONY: build build-release test lint fmt check docker-build docker-push \
        deploy-staging deploy-prod k8s-apply compose-up compose-down clean \
-       aws-deploy aws-infra aws-build aws-services aws-app aws-monitor aws-health aws-destroy
+       aws-deploy aws-infra aws-build aws-operators aws-services aws-security aws-app aws-monitor aws-health aws-destroy
 
 # Variables
 IMAGE_NAME ?= campaign-express
@@ -108,8 +108,14 @@ aws-infra:
 aws-build:
 	deploy/aws/deploy-aws.sh --stage build
 
+aws-operators:
+	deploy/aws/deploy-aws.sh --stage operators
+
 aws-services:
 	deploy/aws/deploy-aws.sh --stage services
+
+aws-security:
+	deploy/aws/deploy-aws.sh --stage security
 
 aws-app:
 	deploy/aws/deploy-aws.sh --stage app
