@@ -1,0 +1,137 @@
+# =============================================================================
+# Campaign Express — Helm Values Override for AWS EKS
+# =============================================================================
+# Usage: helm upgrade --install campaign-express deploy/helm/campaign-express \
+#          -f deploy/aws/values-aws.yaml \
+#          --set image.repository=$ECR_REPO_URL
+# =============================================================================
+
+replicaCount: 20
+
+image:
+  # Set via --set image.repository=<ECR_URL>/campaign-express
+  repository: campaign-express
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# ── Application Config ──────────────────────────────────────────────────────
+
+config:
+  agentsPerNode: 20
+  apiHost: "0.0.0.0"
+  httpPort: 8080
+  grpcPort: 9090
+  metricsPort: 9091
+  npuModelPath: /models/colanet.onnx
+  npuDevice: cpu
+  logLevel: "campaign_express=info"
+
+# ── Service URLs (patched by deploy script with real endpoints) ─────────────
+
+nats:
+  url: "nats://nats.campaign-express.svc.cluster.local:4222"
+
+redis:
+  # For AWS ElastiCache: set via --set redis.url at deploy time
+  url: "rediss://campaign-express-redis.xxxx.clustercfg.use1.cache.amazonaws.com:6379"
+
+clickhouse:
+  url: "http://clickhouse.campaign-express.svc.cluster.local:8123"
+  database: "campaign_analytics"
+
+# ── Resources ───────────────────────────────────────────────────────────────
+
+resources:
+  requests:
+    cpu: "2"
+    memory: "4Gi"
+  limits:
+    cpu: "4"
+    memory: "8Gi"
+
+# ── NPU (disabled on AWS — no AMD XDNA) ────────────────────────────────────
+
+npu:
+  enabled: false
+
+# ── Autoscaling ─────────────────────────────────────────────────────────────
+
+autoscaling:
+  enabled: true
+  minReplicas: 10
+  maxReplicas: 40
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ── Pod Disruption Budget ───────────────────────────────────────────────────
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: "80%"
+
+# ── Service ─────────────────────────────────────────────────────────────────
+
+service:
+  type: ClusterIP
+  httpPort: 8080
+  grpcPort: 9090
+  metricsPort: 9091
+
+# ── Ingress (AWS ALB Ingress Controller) ────────────────────────────────────
+
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: ""  # Set via --set
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "10"
+  hosts:
+    - host: campaign-express.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# ── Model Storage (gp3 EBS volumes) ────────────────────────────────────────
+
+modelStorage:
+  enabled: true
+  storageClass: "gp3"
+  size: 10Gi
+
+# ── Monitoring ──────────────────────────────────────────────────────────────
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+  grafanaDashboard:
+    enabled: true
+
+# ── Node Scheduling (AWS labels) ───────────────────────────────────────────
+
+nodeSelector:
+  role: bidding
+
+tolerations:
+  - key: "workload"
+    operator: "Equal"
+    value: "bidding"
+    effect: "NoSchedule"
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - campaign-express
+          topologyKey: kubernetes.io/hostname

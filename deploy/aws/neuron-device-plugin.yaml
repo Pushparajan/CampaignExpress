@@ -1,0 +1,55 @@
+# =============================================================================
+# AWS Neuron Device Plugin — For Inferentia 2/3 Instances
+# =============================================================================
+# Enables aws.amazon.com/neuron resource on inf2/inf3 EKS nodes
+# Ref: https://awsdocs-neuron.readthedocs-hosted.com/en/latest/containers/
+# =============================================================================
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: neuron-device-plugin
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: neuron-device-plugin
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: neuron-device-plugin
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: neuron-device-plugin
+    spec:
+      nodeSelector:
+        node.kubernetes.io/instance-type: inf2.xlarge
+      tolerations:
+        - key: aws.amazon.com/neuron
+          operator: Exists
+          effect: NoSchedule
+        - key: workload
+          operator: Equal
+          value: bidding
+          effect: NoSchedule
+      priorityClassName: system-node-critical
+      containers:
+        - name: neuron-device-plugin
+          image: public.ecr.aws/neuron/neuron-device-plugin:2.20.0.0
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+            - name: KUBECONFIG
+              value: /etc/kubernetes/kubelet.conf
+          volumeMounts:
+            - name: device-plugins
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: infa-map
+              mountPath: /run
+      volumes:
+        - name: device-plugins
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: infa-map
+          hostPath:
+            path: /run

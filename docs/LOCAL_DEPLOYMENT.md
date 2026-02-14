@@ -4,6 +4,31 @@ Complete guide to running the entire Campaign Express platform on a local develo
 
 ---
 
+## Fastest Path (One Command)
+
+If you just want everything running with test data pre-loaded:
+
+```bash
+./quickstart.sh
+```
+
+This checks prerequisites, builds the workspace, starts infrastructure (NATS, Redis, ClickHouse, Prometheus, Grafana), seeds demo data (campaigns, users, bid events), starts the backend, and runs smoke tests. When done, the API is live at `http://localhost:8080` with 7 demo campaigns, 12 creatives, and 5 journeys ready to go.
+
+**Other options:**
+
+| Command | What it does |
+|---------|-------------|
+| `./quickstart.sh --check` | Just verify prerequisites are installed |
+| `./quickstart.sh --no-build` | Skip Rust build (use existing binary) |
+| `./quickstart.sh --no-frontend` | Skip Node.js/UI setup |
+| `./quickstart.sh --seed-only` | Only seed data (infra must already be running) |
+| `./quickstart.sh --reset` | Wipe all data volumes and start fresh |
+| `./quickstart.sh --full-agents` | Run with NATS agents instead of API-only mode |
+
+If you need more control, follow the step-by-step sections below.
+
+---
+
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
