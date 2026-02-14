@@ -118,9 +118,8 @@ CampaignExpress/
 
 ### Deployment & Operations
 - **[Deployment Guide](docs/DEPLOYMENT.md)** — Production Kubernetes deployment instructions
-- **[Local Deployment](docs/LOCAL_DEPLOYMENT.md)** — Local development environment setup with Docker Compose
+- **[Local Deployment](docs/LOCAL_DEPLOYMENT.md)** — Local development environment setup (includes one-command `quickstart.sh`)
 - **[Prerequisites](docs/PREREQUISITES.md)** — Platform-specific installation guide (macOS, Linux, Windows)
-- **[Infrastructure Reference](docs/INFRASTRUCTURE.md)** — All deploy/ manifests: K8s, Terraform, Helm, Docker, monitoring, HAProxy, NATS, Redis, ClickHouse
 - **[SaaS Operations Guide](docs/SAAS_OPERATIONS.md)** — Team structure, skills matrix, and staffing by growth stage (18-60 people)
 
 ### Operating Guides (Onboarding)
@@ -141,14 +140,28 @@ CampaignExpress/
 
 ## Quick Start
 
+### One-Command Setup (Recommended for Beginners)
+
+```bash
+./quickstart.sh
+```
+
+This single command handles everything: checks prerequisites, builds the workspace, starts all infrastructure (NATS, Redis, ClickHouse, Prometheus, Grafana), seeds test data, starts the backend, and runs smoke tests. When it finishes, the platform is fully running with demo campaigns, creatives, and journeys pre-loaded.
+
+```bash
+./quickstart.sh --check        # Just verify prerequisites are installed
+./quickstart.sh --no-build     # Skip Rust build (if already built)
+./quickstart.sh --reset        # Wipe all data and start fresh
+```
+
 ### Prerequisites
 
 - Rust 1.77+ (`rustup install stable`)
 - Docker & Docker Compose
 - Node.js 18+ and npm (for the management UI)
 
-> **First time?** See [docs/PREREQUISITES.md](docs/PREREQUISITES.md) for detailed installation instructions for each platform.
-> 
+> **First time?** See [docs/PREREQUISITES.md](docs/PREREQUISITES.md) for detailed installation instructions for macOS, Linux, and Windows.
+>
 > **For Marketers:** See [docs/MARKETER_GUIDE.md](docs/MARKETER_GUIDE.md) for a comprehensive guide on creating campaigns, managing creatives, and using all marketer-facing features.
 >
 > **For Engineers:** New to the team? Check out our role-specific guides:
