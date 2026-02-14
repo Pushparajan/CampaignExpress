@@ -529,8 +529,8 @@ impl DashboardEngine {
         let now = Utc::now();
 
         // --- Installation 1: Acme Corp (Enterprise, active) ---
-        let acme_id = Uuid::parse_str("10000000-0000-0000-0000-000000000001").unwrap();
-        let acme_tenant = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+        let acme_id = Uuid::parse_str("10000000-0000-0000-0000-000000000001").expect("valid hardcoded UUID");
+        let acme_tenant = Uuid::parse_str("00000000-0000-0000-0000-000000000001").expect("valid hardcoded UUID");
         let acme_license = License {
             license_id: Uuid::new_v4(),
             tenant_id: acme_tenant,
@@ -558,8 +558,8 @@ impl DashboardEngine {
         });
 
         // --- Installation 2: Globex Inc (Professional, active) ---
-        let globex_id = Uuid::parse_str("10000000-0000-0000-0000-000000000002").unwrap();
-        let globex_tenant = Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap();
+        let globex_id = Uuid::parse_str("10000000-0000-0000-0000-000000000002").expect("valid hardcoded UUID");
+        let globex_tenant = Uuid::parse_str("00000000-0000-0000-0000-000000000002").expect("valid hardcoded UUID");
         let globex_license = License {
             license_id: Uuid::new_v4(),
             tenant_id: globex_tenant,
@@ -587,8 +587,8 @@ impl DashboardEngine {
         });
 
         // --- Installation 3: Initech (Starter, active) ---
-        let initech_id = Uuid::parse_str("10000000-0000-0000-0000-000000000003").unwrap();
-        let initech_tenant = Uuid::parse_str("00000000-0000-0000-0000-000000000003").unwrap();
+        let initech_id = Uuid::parse_str("10000000-0000-0000-0000-000000000003").expect("valid hardcoded UUID");
+        let initech_tenant = Uuid::parse_str("00000000-0000-0000-0000-000000000003").expect("valid hardcoded UUID");
         let initech_license = License {
             license_id: Uuid::new_v4(),
             tenant_id: initech_tenant,
@@ -616,8 +616,8 @@ impl DashboardEngine {
         });
 
         // --- Installation 4: Umbrella Corp (Trial, expired) ---
-        let umbrella_id = Uuid::parse_str("10000000-0000-0000-0000-000000000004").unwrap();
-        let umbrella_tenant = Uuid::parse_str("00000000-0000-0000-0000-000000000004").unwrap();
+        let umbrella_id = Uuid::parse_str("10000000-0000-0000-0000-000000000004").expect("valid hardcoded UUID");
+        let umbrella_tenant = Uuid::parse_str("00000000-0000-0000-0000-000000000004").expect("valid hardcoded UUID");
         let umbrella_license = License {
             license_id: Uuid::new_v4(),
             tenant_id: umbrella_tenant,
@@ -996,7 +996,7 @@ mod tests {
         let engine = DashboardEngine::new();
         engine.seed_demo_data();
 
-        let acme_id = Uuid::parse_str("10000000-0000-0000-0000-000000000001").unwrap();
+        let acme_id = Uuid::parse_str("10000000-0000-0000-0000-000000000001").expect("valid hardcoded UUID");
         let summary = engine.installation_summary(acme_id).unwrap();
 
         assert_eq!(summary.installation.tenant_name, "Acme Corp");
@@ -1080,7 +1080,7 @@ mod tests {
         let engine = DashboardEngine::new();
         engine.seed_demo_data();
 
-        let initech_id = Uuid::parse_str("10000000-0000-0000-0000-000000000003").unwrap();
+        let initech_id = Uuid::parse_str("10000000-0000-0000-0000-000000000003").expect("valid hardcoded UUID");
         let updated = engine
             .update_status(initech_id, InstallationStatus::Suspended)
             .unwrap();

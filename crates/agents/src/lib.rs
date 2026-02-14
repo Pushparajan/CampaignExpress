@@ -1,3 +1,5 @@
+#![warn(clippy::unwrap_used)]
+
 pub mod agent;
 pub mod batcher;
 pub mod manager;

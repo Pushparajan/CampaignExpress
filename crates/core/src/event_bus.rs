@@ -35,30 +35,30 @@ impl CaptureSink {
     }
 
     pub fn events(&self) -> Vec<AnalyticsEvent> {
-        self.events.lock().unwrap().clone()
+        self.events.lock().expect("event bus mutex poisoned").clone()
     }
 
     pub fn count(&self) -> usize {
-        self.events.lock().unwrap().len()
+        self.events.lock().expect("event bus mutex poisoned").len()
     }
 
     pub fn count_type(&self, event_type: EventType) -> usize {
         self.events
             .lock()
-            .unwrap()
+            .expect("event bus mutex poisoned")
             .iter()
             .filter(|e| e.event_type == event_type)
             .count()
     }
 
     pub fn clear(&self) {
-        self.events.lock().unwrap().clear();
+        self.events.lock().expect("event bus mutex poisoned").clear();
     }
 }
 
 impl EventSink for CaptureSink {
     fn emit(&self, event: AnalyticsEvent) {
-        self.events.lock().unwrap().push(event);
+        self.events.lock().expect("event bus mutex poisoned").push(event);
     }
 }
 
@@ -97,6 +97,7 @@ pub fn capture_sink() -> Arc<CaptureSink> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
