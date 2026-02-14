@@ -263,6 +263,22 @@ impl WorkflowEngine {
         requested_by: Uuid,
         approver_ids: Vec<(Uuid, String)>,
     ) -> ApprovalRequest {
+        if approver_ids.is_empty() {
+            // Auto-approve if no approvers specified
+            let request = ApprovalRequest {
+                id: Uuid::new_v4(),
+                campaign_id,
+                requested_by,
+                approvers: vec![],
+                rule_id: Uuid::new_v4(),
+                status: ApprovalStatus::Approved,
+                created_at: Utc::now(),
+                resolved_at: Some(Utc::now()),
+            };
+            self.approval_requests.insert(request.id, request.clone());
+            return request;
+        }
+
         // Pick the first available rule, or create a fallback id.
         let rule_id = self
             .approval_rules

@@ -48,13 +48,19 @@ impl InferenceBatcher {
             return self
                 .provider
                 .predict(&profile, &offer_ids)
-                .unwrap_or_default();
+                .unwrap_or_else(|e| {
+                    tracing::warn!("Inference prediction failed: {e}");
+                    Vec::new()
+                });
         }
         // For batching providers, call predict directly too (actual async
         // batching requires tokio runtime; this is the synchronous fallback).
         self.provider
             .predict(&profile, &offer_ids)
-            .unwrap_or_default()
+            .unwrap_or_else(|e| {
+                tracing::warn!("Inference prediction failed: {e}");
+                Vec::new()
+            })
     }
 
     /// Flush a collected batch of requests through the provider.
@@ -64,7 +70,10 @@ impl InferenceBatcher {
         &self,
         requests: Vec<(UserProfile, Vec<String>)>,
     ) -> Vec<Vec<InferenceResult>> {
-        self.provider.predict_batch(requests).unwrap_or_default()
+        self.provider.predict_batch(requests).unwrap_or_else(|e| {
+            tracing::warn!("Batch inference prediction failed: {e}");
+            Vec::new()
+        })
     }
 
     /// The name of the underlying provider (for metrics/logging).

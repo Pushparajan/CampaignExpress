@@ -205,7 +205,7 @@ impl TenantManager {
             "offers" => tenant.usage.offers_served_today < tenant.settings.max_offers_per_hour,
             "api_calls" => tenant.usage.api_calls_today < tenant.settings.max_api_calls_per_day,
             "users" => tenant.usage.users_count < tenant.settings.max_users,
-            _ => true,
+            _ => false,
         };
         Ok(within)
     }
@@ -214,11 +214,23 @@ impl TenantManager {
     pub fn increment_usage(&self, tenant_id: Uuid, resource: &str, amount: u64) {
         if let Some(mut entry) = self.tenants.get_mut(&tenant_id) {
             match resource {
-                "campaigns" => entry.usage.campaigns_active += amount as u32,
-                "offers" => entry.usage.offers_served_today += amount,
-                "api_calls" => entry.usage.api_calls_today += amount,
-                "users" => entry.usage.users_count += amount as u32,
-                "storage" => entry.usage.storage_bytes += amount,
+                "campaigns" => {
+                    entry.usage.campaigns_active =
+                        entry.usage.campaigns_active.saturating_add(amount as u32)
+                }
+                "offers" => {
+                    entry.usage.offers_served_today =
+                        entry.usage.offers_served_today.saturating_add(amount)
+                }
+                "api_calls" => {
+                    entry.usage.api_calls_today = entry.usage.api_calls_today.saturating_add(amount)
+                }
+                "users" => {
+                    entry.usage.users_count = entry.usage.users_count.saturating_add(amount as u32)
+                }
+                "storage" => {
+                    entry.usage.storage_bytes = entry.usage.storage_bytes.saturating_add(amount)
+                }
                 _ => {}
             }
         }
@@ -328,7 +340,7 @@ mod tests {
         mgr.increment_usage(tenant.id, "campaigns", 5);
         assert!(!mgr.check_quota(tenant.id, "campaigns").unwrap());
 
-        // Unknown resource always returns true.
-        assert!(mgr.check_quota(tenant.id, "widgets").unwrap());
+        // Unknown resource now returns false (deny by default).
+        assert!(!mgr.check_quota(tenant.id, "widgets").unwrap());
     }
 }

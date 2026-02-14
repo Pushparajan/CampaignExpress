@@ -281,7 +281,10 @@ fn cmd_generate_key(output: Option<String>) {
     let b64 = key.to_base64();
 
     if let Some(path) = output {
-        std::fs::write(&path, &b64).expect("Failed to write key file");
+        if let Err(e) = std::fs::write(&path, &b64) {
+            eprintln!("Failed to write key file: {e}");
+            std::process::exit(1);
+        }
         println!("Signing key written to: {path}");
     } else {
         println!("{b64}");
@@ -302,8 +305,13 @@ fn cmd_create_license(
     issued_by: String,
     output: Option<String>,
 ) {
-    let signing_key =
-        LicenseKey::load_from_file(std::path::Path::new(&key)).expect("Failed to load key");
+    let signing_key = match LicenseKey::load_from_file(std::path::Path::new(&key)) {
+        Ok(k) => k,
+        Err(e) => {
+            eprintln!("Failed to load signing key: {e}");
+            std::process::exit(1);
+        }
+    };
 
     let tier = parse_tier(&tier);
     let license_type = parse_license_type(&license_type);
@@ -343,10 +351,19 @@ fn cmd_create_license(
         issued_by,
     };
 
-    let signed = sign_license(&license, &signing_key).expect("Failed to sign license");
+    let signed = match sign_license(&license, &signing_key) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Failed to sign license: {e}");
+            std::process::exit(1);
+        }
+    };
 
     if let Some(path) = output {
-        std::fs::write(&path, &signed).expect("Failed to write license file");
+        if let Err(e) = std::fs::write(&path, &signed) {
+            eprintln!("Failed to write license file: {e}");
+            std::process::exit(1);
+        }
         println!("License written to: {path}");
         println!("  License ID:  {}", license.license_id);
         println!("  Tenant:      {}", license.tenant_name);
@@ -360,9 +377,20 @@ fn cmd_create_license(
 }
 
 fn cmd_verify(key: String, license: String) {
-    let signing_key =
-        LicenseKey::load_from_file(std::path::Path::new(&key)).expect("Failed to load key");
-    let contents = std::fs::read_to_string(&license).expect("Failed to read license file");
+    let signing_key = match LicenseKey::load_from_file(std::path::Path::new(&key)) {
+        Ok(k) => k,
+        Err(e) => {
+            eprintln!("Failed to load signing key: {e}");
+            std::process::exit(1);
+        }
+    };
+    let contents = match std::fs::read_to_string(&license) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Failed to read license file: {e}");
+            std::process::exit(1);
+        }
+    };
 
     match verify_license(&contents, &signing_key) {
         Ok(lic) => {

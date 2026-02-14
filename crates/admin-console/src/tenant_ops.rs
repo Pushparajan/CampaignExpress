@@ -184,6 +184,9 @@ impl<'a> TenantOps<'a> {
 
     /// Get tenants that are approaching or exceeding their quotas.
     pub fn tenants_near_quota(&self, threshold_pct: f64) -> Vec<TenantQuotaAlert> {
+        if !(0.0..=100.0).contains(&threshold_pct) {
+            return Vec::new();
+        }
         self.manager
             .list_tenants()
             .into_iter()

@@ -159,7 +159,10 @@ impl BiddingServiceServer for BiddingServiceImpl {
                         Ok(bid_response) => {
                             let has_bid = !bid_response.seatbid.is_empty();
                             let openrtb_json =
-                                serde_json::to_string(&bid_response).unwrap_or_default();
+                                serde_json::to_string(&bid_response).unwrap_or_else(|e| {
+                                    tracing::error!("Failed to serialize bid response: {e}");
+                                    String::new()
+                                });
                             Ok(BidResponseProto {
                                 openrtb_json,
                                 request_id: bid_response.id,

@@ -30,6 +30,7 @@ members = [
     "crates/licensing",
     "crates/web-sdk",
     "crates/admin-console",
+    "crates/agentic-testing",
     "src/campaign-express",
     "src/license-admin",
 ]
@@ -121,6 +122,7 @@ campaign-sdk-docs = { path = "crates/sdk-docs" }
 campaign-licensing = { path = "crates/licensing" }
 campaign-web-sdk = { path = "crates/web-sdk" }
 campaign-admin-console = { path = "crates/admin-console" }
+campaign-agentic-testing = { path = "crates/agentic-testing" }
 
 [profile.release]
 opt-level = 3

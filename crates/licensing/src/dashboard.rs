@@ -379,7 +379,7 @@ impl DashboardEngine {
         let now = Utc::now();
         self.invoices
             .iter()
-            .filter(|e| e.value().status == InvoiceStatus::Open && e.value().due_at < now)
+            .filter(|e| e.value().status == InvoiceStatus::Open && e.value().due_at <= now)
             .map(|e| e.value().clone())
             .collect()
     }
@@ -509,7 +509,7 @@ impl DashboardEngine {
             .filter(|i| i.status == InvoiceStatus::Paid)
             .map(|i| i.total_cents)
             .sum();
-        let outstanding_cents = total_billed_cents - total_paid_cents;
+        let outstanding_cents = total_billed_cents.saturating_sub(total_paid_cents);
 
         Some(InstallationSummary {
             installation,

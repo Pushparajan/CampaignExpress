@@ -148,7 +148,10 @@ impl FeatureFlagManager {
                 }
             }
             RolloutStrategy::Percentage => {
-                let pct = flag.percentage.unwrap_or(0);
+                let pct = flag.percentage.unwrap_or_else(|| {
+                    tracing::warn!(flag_key = %key, "Percentage flag missing percentage value, defaulting to 0");
+                    0
+                });
                 // Deterministic hash from tenant_id to get stable percentage bucket
                 let hash = tenant_id.as_u128() % 100;
                 if hash < pct as u128 {

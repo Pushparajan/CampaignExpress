@@ -242,7 +242,7 @@ impl License {
 
     /// Check whether the license has expired.
     pub fn is_expired(&self) -> bool {
-        Utc::now() > self.expires_at
+        Utc::now() >= self.expires_at
     }
 
     /// Validate the license is not expired and a given module is included.
