@@ -23,7 +23,7 @@ Operating CampaignExpress as a SaaS product requires a multi-disciplinary team o
 - **Growth Stage (1-2 years)**: 30-40 people  
 - **Mature Stage (3+ years)**: 50-60+ people
 - **Critical Skills**: Rust/systems programming, Kubernetes, ML ops, distributed systems, enterprise SaaS operations
-- **Most Scarce Skills**: Rust engineers, ML engineers with real-time inference expertise, Kubernetes/SRE specialists
+- **Most Scarce Skills**: Rust engineers, real-time ML engineers, Kubernetes/SRE specialists
 
 ---
 
@@ -451,7 +451,7 @@ Essential team to launch, support initial customers, and iterate based on feedba
 | Function | Headcount | Notes |
 |----------|-----------|-------|
 | **Engineering** | 8-10 | 3 senior Rust, 2-3 mid-level backend, 2 frontend, 1 ML |
-| **Platform Ops** | 3-4 | 1 senior SRE, 1-2 DevOps, 0-1 security (contractor) |
+| **Platform Ops** | 3-4 | 1 senior SRE, 1-2 SRE/DevOps, 0-1 security (contractor) |
 | **Product & Design** | 3 | 1 product lead, 1 PM, 1 designer |
 | **Customer Success** | 3-4 | 1 CSM, 2 support engineers |
 | **Business Ops** | 1-2 | 1 sales/founder, 0-1 operations |
@@ -460,7 +460,7 @@ Essential team to launch, support initial customers, and iterate based on feedba
 
 **Hiring Priorities**:
 1. Senior Rust engineers (2-3)
-2. Senior SRE (1)
+2. Senior SRE/DevOps (1)
 3. Frontend engineers (2)
 4. Customer success (2-3)
 5. Product manager (1)
