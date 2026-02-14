@@ -1,10 +1,18 @@
 //! License Admin CLI — generate keys, create licenses, verify license files,
-//! and manage the billing dashboard.
+//! manage the billing dashboard, and operate the SaaS admin console.
 
+use campaign_admin_console::{
+    notifications::Severity, FeatureFlagManager, NotificationManager, ProviderDashboard,
+    SystemSettings, TenantOps, UserOps,
+};
+use campaign_billing::billing::BillingEngine;
 use campaign_licensing::{
     dashboard::{DashboardEngine, InvoiceStatus, PaymentStatus},
     sign_license, verify_license, License, LicenseKey, LicenseTier, LicenseType, LicensedModule,
 };
+use campaign_platform::auth::AuthManager;
+use campaign_platform::rbac::RbacEngine;
+use campaign_platform::tenancy::TenantManager;
 use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
 use uuid::Uuid;
@@ -92,6 +100,63 @@ enum Commands {
     Dashboard {
         #[command(subcommand)]
         action: DashboardAction,
+    },
+
+    /// SaaS admin console — tenants, users, feature flags, settings
+    Admin {
+        #[command(subcommand)]
+        action: AdminAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum AdminAction {
+    /// Show provider-level overview (all tenants, billing, usage)
+    Overview,
+
+    /// List all tenants with status and tier
+    Tenants,
+
+    /// Suspend a tenant
+    SuspendTenant {
+        /// Tenant UUID
+        id: String,
+        /// Reason for suspension
+        #[arg(short, long, default_value = "Administrative action")]
+        reason: String,
+    },
+
+    /// Reactivate a suspended tenant
+    ReactivateTenant {
+        /// Tenant UUID
+        id: String,
+        /// Reason for reactivation
+        #[arg(short, long, default_value = "Administrative action")]
+        reason: String,
+    },
+
+    /// Show all users for a tenant
+    Users {
+        /// Tenant UUID
+        tenant_id: String,
+    },
+
+    /// Show feature flags and their status
+    FeatureFlags,
+
+    /// Show notification inbox
+    Notifications,
+
+    /// Show system settings
+    Settings,
+
+    /// Toggle maintenance mode
+    Maintenance {
+        /// "on" or "off"
+        mode: String,
+        /// Maintenance message (for on mode)
+        #[arg(short, long)]
+        message: Option<String>,
     },
 }
 
@@ -203,6 +268,7 @@ fn main() {
         Commands::Verify { key, license } => cmd_verify(key, license),
         Commands::ListModules => cmd_list_modules(),
         Commands::Dashboard { action } => cmd_dashboard(action),
+        Commands::Admin { action } => cmd_admin(action),
     }
 }
 
@@ -839,6 +905,445 @@ fn format_cents(cents: u64) -> String {
         )
     } else {
         format!("{dollars}.{remainder:02}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Admin console commands
+// ---------------------------------------------------------------------------
+
+fn cmd_admin(action: AdminAction) {
+    // Bootstrap subsystems with demo data
+    let tenant_mgr = TenantManager::new();
+    tenant_mgr.seed_demo_tenants();
+    let billing = BillingEngine::new();
+    billing.seed_demo_data();
+    let auth = AuthManager::new();
+    auth.seed_demo_providers();
+    let rbac = RbacEngine::new();
+    rbac.seed_default_roles();
+    let feature_flags = FeatureFlagManager::new();
+    feature_flags.seed_defaults();
+    let notifications = NotificationManager::new();
+    notifications.seed_demo();
+    let settings = SystemSettings::new();
+
+    match action {
+        AdminAction::Overview => cmd_admin_overview(&tenant_mgr, &billing),
+        AdminAction::Tenants => cmd_admin_tenants(&tenant_mgr),
+        AdminAction::SuspendTenant { id, reason } => {
+            cmd_admin_suspend(&tenant_mgr, &id, &reason);
+        }
+        AdminAction::ReactivateTenant { id, reason } => {
+            cmd_admin_reactivate(&tenant_mgr, &id, &reason);
+        }
+        AdminAction::Users { tenant_id } => cmd_admin_users(&tenant_mgr, &auth, &rbac, &tenant_id),
+        AdminAction::FeatureFlags => cmd_admin_feature_flags(&feature_flags),
+        AdminAction::Notifications => cmd_admin_notifications(&notifications),
+        AdminAction::Settings => cmd_admin_settings(&settings),
+        AdminAction::Maintenance { mode, message } => {
+            cmd_admin_maintenance(&settings, &mode, message);
+        }
+    }
+}
+
+fn cmd_admin_overview(tenant_mgr: &TenantManager, billing: &BillingEngine) {
+    let dashboard = ProviderDashboard::new(tenant_mgr, billing);
+    let overview = dashboard.overview();
+
+    println!("╔══════════════════════════════════════════════════════════════╗");
+    println!("║              CAMPAIGN EXPRESS — PROVIDER OVERVIEW           ║");
+    println!("╚══════════════════════════════════════════════════════════════╝");
+    println!();
+
+    println!("  TENANTS");
+    println!("  ─────────────────────────────────────────");
+    println!(
+        "  Total: {}    Active: {}    Suspended: {}    Trial: {}    Cancelled: {}",
+        overview.total_tenants,
+        overview.active_tenants,
+        overview.suspended_tenants,
+        overview.trial_tenants,
+        overview.cancelled_tenants
+    );
+    println!();
+
+    println!("  TIER BREAKDOWN");
+    println!("  ─────────────────────────────────────────");
+    let tiers = &overview.tenants_by_tier;
+    println!(
+        "  Free: {}    Starter: {}    Professional: {}    Enterprise: {}    Custom: {}",
+        tiers.free, tiers.starter, tiers.professional, tiers.enterprise, tiers.custom
+    );
+    println!();
+
+    println!("  BILLING");
+    println!("  ─────────────────────────────────────────");
+    let b = &overview.billing_summary;
+    println!(
+        "  MRR: ${:.2}    ARR: ${:.2}    Active Subscriptions: {}",
+        b.total_mrr, b.total_arr, b.active_subscriptions
+    );
+    println!(
+        "  Open Invoices: {} (${:.2})    Paid: {}    Total Revenue: ${:.2}",
+        b.open_invoices, b.open_invoice_amount, b.paid_invoices, b.total_revenue
+    );
+    println!();
+
+    println!("  USAGE (TODAY)");
+    println!("  ─────────────────────────────────────────");
+    let u = &overview.usage_summary;
+    println!(
+        "  Offers Served: {}    API Calls: {}    Active Campaigns: {}",
+        format_number(u.total_offers_today),
+        format_number(u.total_api_calls_today),
+        u.total_campaigns_active
+    );
+    println!(
+        "  Total Users: {}    Storage: {} bytes",
+        u.total_users, u.total_storage_bytes
+    );
+    println!();
+
+    // Tenant table
+    let rows = dashboard.tenant_table();
+    println!("  TENANT TABLE");
+    println!("  ─────────────────────────────────────────");
+    println!(
+        "  {:<20} {:<14} {:<10} {:<6} {:<6} {:<12} {:<8}",
+        "Name", "Tier", "Status", "Users", "Camps", "Offers/Day", "MRR"
+    );
+    for row in &rows {
+        println!(
+            "  {:<20} {:<14} {:<10} {:<6} {:<6} {:<12} ${:<.2}",
+            truncate(&row.name, 18),
+            format!("{:?}", row.tier),
+            format!("{:?}", row.status),
+            row.users,
+            row.campaigns,
+            format_number(row.offers_today),
+            row.mrr
+        );
+    }
+    println!();
+}
+
+fn cmd_admin_tenants(tenant_mgr: &TenantManager) {
+    let ops = TenantOps::new(tenant_mgr);
+    let tenants = ops.list_all();
+
+    println!(
+        "╔══════════════════════════════════════════════════════════════════════════════════╗"
+    );
+    println!("║                              ALL TENANTS                                       ║");
+    println!(
+        "╚══════════════════════════════════════════════════════════════════════════════════╝"
+    );
+    println!();
+    println!(
+        "  {:<36}  {:<20}  {:<14}  {:<10}  {:<6}  {:<10}",
+        "ID", "Name", "Tier", "Status", "Users", "Offers/Day"
+    );
+    for t in &tenants {
+        println!(
+            "  {:<36}  {:<20}  {:<14}  {:<10}  {:<6}  {:<10}",
+            t.id,
+            truncate(&t.name, 18),
+            format!("{:?}", t.pricing_tier),
+            format!("{:?}", t.status),
+            t.usage.users_count,
+            format_number(t.usage.offers_served_today)
+        );
+    }
+    println!();
+    println!("  Total: {} tenants", tenants.len());
+
+    // Quota alerts
+    let alerts = ops.tenants_near_quota(80.0);
+    if !alerts.is_empty() {
+        println!();
+        println!("  ⚠ QUOTA ALERTS (>80% usage)");
+        println!("  ─────────────────────────────────────────");
+        for alert in &alerts {
+            let resources: Vec<_> = alert
+                .alerts
+                .iter()
+                .map(|(r, pct)| format!("{r}: {pct:.1}%"))
+                .collect();
+            println!("  {} — {}", alert.tenant_name, resources.join(", "));
+        }
+    }
+    println!();
+}
+
+fn cmd_admin_suspend(tenant_mgr: &TenantManager, id: &str, reason: &str) {
+    let ops = TenantOps::new(tenant_mgr);
+    let tenant_id = match Uuid::parse_str(id) {
+        Ok(id) => id,
+        Err(_) => {
+            eprintln!("Error: invalid UUID '{id}'");
+            return;
+        }
+    };
+
+    let action_reason =
+        campaign_admin_console::tenant_ops::ActionReason::new(Uuid::new_v4(), reason);
+    match ops.suspend(tenant_id, action_reason) {
+        Ok(result) => {
+            println!("Tenant {} suspended.", tenant_id);
+            println!(
+                "  Previous status: {:?} → New status: {:?}",
+                result.previous_status, result.new_status
+            );
+            println!("  Reason: {reason}");
+        }
+        Err(e) => eprintln!("Error: {e}"),
+    }
+}
+
+fn cmd_admin_reactivate(tenant_mgr: &TenantManager, id: &str, reason: &str) {
+    let ops = TenantOps::new(tenant_mgr);
+    let tenant_id = match Uuid::parse_str(id) {
+        Ok(id) => id,
+        Err(_) => {
+            eprintln!("Error: invalid UUID '{id}'");
+            return;
+        }
+    };
+
+    let action_reason =
+        campaign_admin_console::tenant_ops::ActionReason::new(Uuid::new_v4(), reason);
+    match ops.reactivate(tenant_id, action_reason) {
+        Ok(result) => {
+            println!("Tenant {} reactivated.", tenant_id);
+            println!(
+                "  Previous status: {:?} → New status: {:?}",
+                result.previous_status, result.new_status
+            );
+            println!("  Reason: {reason}");
+        }
+        Err(e) => eprintln!("Error: {e}"),
+    }
+}
+
+fn cmd_admin_users(
+    tenant_mgr: &TenantManager,
+    auth: &AuthManager,
+    rbac: &RbacEngine,
+    tenant_id_str: &str,
+) {
+    let tenant_id = match Uuid::parse_str(tenant_id_str) {
+        Ok(id) => id,
+        Err(_) => {
+            eprintln!("Error: invalid UUID '{tenant_id_str}'");
+            return;
+        }
+    };
+
+    let tenant = tenant_mgr.get_tenant(tenant_id);
+    let tenant_name = tenant
+        .as_ref()
+        .map(|t| t.name.as_str())
+        .unwrap_or("Unknown");
+
+    let user_ops = UserOps::new(auth, rbac);
+    user_ops.seed_demo_users(tenant_id);
+    let users = user_ops.list_users(tenant_id);
+
+    println!("╔══════════════════════════════════════════════════════════════╗");
+    println!("║  USERS — {:<50} ║", truncate(tenant_name, 48));
+    println!("╚══════════════════════════════════════════════════════════════╝");
+    println!();
+    println!(
+        "  {:<36}  {:<20}  {:<25}  {:<10}  {:<10}",
+        "ID", "Name", "Email", "Status", "Provider"
+    );
+    for u in &users {
+        println!(
+            "  {:<36}  {:<20}  {:<25}  {:<10}  {:<10}",
+            u.id,
+            truncate(&u.display_name, 18),
+            truncate(&u.email, 23),
+            format!("{:?}", u.status),
+            format!("{:?}", u.auth_provider)
+        );
+    }
+    println!();
+    println!("  Total: {} users", users.len());
+
+    // Show roles
+    let roles = rbac.list_roles();
+    println!();
+    println!("  AVAILABLE ROLES");
+    println!("  ─────────────────────────────────────────");
+    for r in &roles {
+        let system_tag = if r.is_system { " [system]" } else { "" };
+        println!(
+            "  {:<20} — {} ({} permissions){}",
+            r.name,
+            r.description,
+            r.permissions.len(),
+            system_tag
+        );
+    }
+
+    // Show pending invitations
+    let invitations = user_ops.list_invitations(tenant_id);
+    if !invitations.is_empty() {
+        println!();
+        println!("  PENDING INVITATIONS");
+        println!("  ─────────────────────────────────────────");
+        for inv in &invitations {
+            println!(
+                "  {} — {:?} (expires {})",
+                inv.email,
+                inv.status,
+                inv.expires_at.format("%Y-%m-%d")
+            );
+        }
+    }
+    println!();
+}
+
+fn cmd_admin_feature_flags(flags: &FeatureFlagManager) {
+    let all_flags = flags.list_flags();
+
+    println!("╔══════════════════════════════════════════════════════════════╗");
+    println!("║                       FEATURE FLAGS                        ║");
+    println!("╚══════════════════════════════════════════════════════════════╝");
+    println!();
+    println!(
+        "  {:<25} {:<12} {:<8} {:<8} Description",
+        "Key", "Strategy", "Pct", "Tenants"
+    );
+    for f in &all_flags {
+        let pct_str = f
+            .percentage
+            .map(|p| format!("{p}%"))
+            .unwrap_or_else(|| "-".into());
+        let tenants_str = if f.allowed_tenants.is_empty() {
+            "-".into()
+        } else {
+            format!("{}", f.allowed_tenants.len())
+        };
+        println!(
+            "  {:<25} {:<12} {:<8} {:<8} {}",
+            f.key,
+            format!("{:?}", f.strategy),
+            pct_str,
+            tenants_str,
+            truncate(&f.description, 40)
+        );
+    }
+    println!();
+    println!("  Total: {} flags", all_flags.len());
+    println!();
+}
+
+fn cmd_admin_notifications(notifications: &NotificationManager) {
+    let unread = notifications.unread(None);
+
+    println!("╔══════════════════════════════════════════════════════════════╗");
+    println!("║                     NOTIFICATION INBOX                     ║");
+    println!("╚══════════════════════════════════════════════════════════════╝");
+    println!();
+    if unread.is_empty() {
+        println!("  No unread notifications.");
+    } else {
+        for n in &unread {
+            let sev = match n.severity {
+                Severity::Critical => "CRIT",
+                Severity::Error => "ERR ",
+                Severity::Warning => "WARN",
+                Severity::Info => "INFO",
+            };
+            let tenant = n
+                .tenant_id
+                .map(|id| id.to_string())
+                .unwrap_or_else(|| "GLOBAL".into());
+            println!("  [{sev}] {}", n.title);
+            println!(
+                "         Category: {:?}  Tenant: {}  {}",
+                n.category,
+                truncate(&tenant, 12),
+                n.created_at.format("%Y-%m-%d %H:%M")
+            );
+            println!("         {}", n.message);
+            let channels: Vec<_> = n.channels.iter().map(|c| format!("{c:?}")).collect();
+            println!("         Channels: {}", channels.join(", "));
+            println!();
+        }
+        println!("  {} unread notifications", unread.len());
+    }
+    println!();
+}
+
+fn cmd_admin_settings(settings: &SystemSettings) {
+    let cfg = settings.get_config();
+
+    println!("╔══════════════════════════════════════════════════════════════╗");
+    println!("║                     SYSTEM SETTINGS                        ║");
+    println!("╚══════════════════════════════════════════════════════════════╝");
+    println!();
+    println!("  GENERAL");
+    println!("  ─────────────────────────────────────────");
+    println!("  Platform:            {}", cfg.platform_name);
+    println!("  Version:             {}", cfg.platform_version);
+    println!("  Environment:         {:?}", cfg.environment);
+    println!("  Maintenance Mode:    {}", cfg.maintenance_mode);
+    if let Some(ref msg) = cfg.maintenance_message {
+        println!("  Maintenance Message: {msg}");
+    }
+    println!();
+
+    println!("  LIMITS");
+    println!("  ─────────────────────────────────────────");
+    println!("  Rate Limit (RPS):    {}", cfg.default_rate_limit_rps);
+    println!("  Rate Limit (RPM):    {}", cfg.default_rate_limit_rpm);
+    println!("  Max Tenants:         {}", cfg.max_tenants);
+    println!("  Data Retention:      {} days", cfg.data_retention_days);
+    println!();
+
+    println!("  SECURITY");
+    println!("  ─────────────────────────────────────────");
+    println!("  Self Registration:   {}", cfg.allow_self_registration);
+    println!("  Email Verification:  {}", cfg.require_email_verification);
+    println!("  MFA Required:        {}", cfg.mfa_required);
+    println!("  Min Password Length: {}", cfg.password_min_length);
+    println!("  Session TTL:         {} hours", cfg.session_ttl_hours);
+    println!("  API Key TTL:         {} days", cfg.api_key_ttl_days);
+    println!();
+
+    let changes = settings.full_change_log();
+    if !changes.is_empty() {
+        println!("  RECENT CHANGES");
+        println!("  ─────────────────────────────────────────");
+        for c in changes.iter().take(10) {
+            println!(
+                "  {} — {} → {} (by {})",
+                c.key, c.old_value, c.new_value, c.changed_by
+            );
+        }
+        println!();
+    }
+}
+
+fn cmd_admin_maintenance(settings: &SystemSettings, mode: &str, message: Option<String>) {
+    match mode.to_lowercase().as_str() {
+        "on" | "enable" | "true" => {
+            settings.enable_maintenance(message.clone(), "admin-cli");
+            println!("Maintenance mode ENABLED.");
+            if let Some(msg) = message {
+                println!("  Message: {msg}");
+            }
+        }
+        "off" | "disable" | "false" => {
+            settings.disable_maintenance("admin-cli");
+            println!("Maintenance mode DISABLED.");
+        }
+        _ => {
+            eprintln!("Error: mode must be 'on' or 'off'");
+        }
     }
 }
 
