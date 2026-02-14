@@ -13,6 +13,7 @@ import {
 import StatusBadge from "@/components/status-badge";
 import { api } from "@/lib/api";
 import type { Journey } from "@/lib/types";
+import { formatDate } from "@/lib/format-date";
 
 export default function JourneysPage() {
   const { data: journeys, isLoading, error } = useQuery({
@@ -91,7 +92,7 @@ export default function JourneysPage() {
                 <td className="px-5 py-4 text-sm text-gray-300">{journey.steps?.length ?? 0}</td>
                 <td className="px-5 py-4 text-sm text-gray-400">v{journey.version}</td>
                 <td className="px-5 py-4 text-sm text-gray-400">
-                  {new Date(journey.created_at).toLocaleDateString()}
+                  {formatDate(journey.created_at)}
                 </td>
               </tr>
             ))}

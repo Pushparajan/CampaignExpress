@@ -10,7 +10,7 @@ use tracing::info;
 use uuid::Uuid;
 
 /// Thread-safe in-memory store for campaigns, creatives, journeys, DCO, CDP, experiments,
-/// platform (tenants, roles, compliance, privacy), billing, ops, and audit log.
+/// platform (tenants, roles, compliance, privacy), users, billing, ops, and audit log.
 pub struct ManagementStore {
     campaigns: DashMap<Uuid, Campaign>,
     creatives: DashMap<Uuid, Creative>,
@@ -25,6 +25,9 @@ pub struct ManagementStore {
     roles: DashMap<Uuid, serde_json::Value>,
     compliance: DashMap<String, serde_json::Value>,
     dsrs: DashMap<Uuid, serde_json::Value>,
+    // Users
+    users: DashMap<Uuid, serde_json::Value>,
+    invitations: DashMap<Uuid, serde_json::Value>,
     // Billing
     plans: DashMap<Uuid, serde_json::Value>,
     subscriptions: DashMap<Uuid, serde_json::Value>,
@@ -48,6 +51,8 @@ impl ManagementStore {
             cdp_sync_history: DashMap::new(),
             experiments: DashMap::new(),
             audit_log: DashMap::new(),
+            users: DashMap::new(),
+            invitations: DashMap::new(),
             tenants: DashMap::new(),
             roles: DashMap::new(),
             compliance: DashMap::new(),
@@ -68,6 +73,7 @@ impl ManagementStore {
         store.seed_platform_data();
         store.seed_billing_data();
         store.seed_ops_data();
+        store.seed_user_data();
         store
     }
 
@@ -1114,10 +1120,278 @@ impl ManagementStore {
         }
     }
 
+    // ─── Users ─────────────────────────────────────────────────────────────
+
+    pub fn list_users(&self) -> Vec<serde_json::Value> {
+        let mut users: Vec<serde_json::Value> =
+            self.users.iter().map(|r| r.value().clone()).collect();
+        users.sort_by(|a, b| {
+            let a_name = a.get("display_name").and_then(|v| v.as_str()).unwrap_or("");
+            let b_name = b.get("display_name").and_then(|v| v.as_str()).unwrap_or("");
+            a_name.cmp(b_name)
+        });
+        users
+    }
+
+    pub fn get_user(&self, id: Uuid) -> Option<serde_json::Value> {
+        self.users.get(&id).map(|r| r.value().clone())
+    }
+
+    pub fn create_user(&self, mut req: serde_json::Value, actor: &str) -> serde_json::Value {
+        let id = Uuid::new_v4();
+        let now = Utc::now().to_rfc3339();
+        req["id"] = serde_json::json!(id);
+        req["created_at"] = serde_json::json!(now);
+        if req.get("status").is_none() {
+            req["status"] = serde_json::json!("active");
+        }
+        if req.get("auth_provider").is_none() {
+            req["auth_provider"] = serde_json::json!("local");
+        }
+        self.users.insert(id, req.clone());
+        self.log_audit(
+            actor,
+            AuditAction::Create,
+            "user",
+            &id.to_string(),
+            serde_json::json!({"email": req.get("email")}),
+        );
+        req
+    }
+
+    pub fn disable_user(&self, id: Uuid, actor: &str) -> Option<serde_json::Value> {
+        self.users.get_mut(&id).map(|mut entry| {
+            entry.value_mut()["status"] = serde_json::json!("disabled");
+            self.log_audit(
+                actor,
+                AuditAction::Update,
+                "user",
+                &id.to_string(),
+                serde_json::json!({"action": "disable"}),
+            );
+            entry.value().clone()
+        })
+    }
+
+    pub fn enable_user(&self, id: Uuid, actor: &str) -> Option<serde_json::Value> {
+        self.users.get_mut(&id).map(|mut entry| {
+            entry.value_mut()["status"] = serde_json::json!("active");
+            self.log_audit(
+                actor,
+                AuditAction::Update,
+                "user",
+                &id.to_string(),
+                serde_json::json!({"action": "enable"}),
+            );
+            entry.value().clone()
+        })
+    }
+
+    pub fn delete_user(&self, id: Uuid, actor: &str) -> bool {
+        let removed = self.users.remove(&id).is_some();
+        if removed {
+            self.log_audit(
+                actor,
+                AuditAction::Delete,
+                "user",
+                &id.to_string(),
+                serde_json::json!({}),
+            );
+        }
+        removed
+    }
+
+    pub fn update_user_role(&self, id: Uuid, role: &str, actor: &str) -> Option<serde_json::Value> {
+        self.users.get_mut(&id).map(|mut entry| {
+            entry.value_mut()["role"] = serde_json::json!(role);
+            self.log_audit(
+                actor,
+                AuditAction::Update,
+                "user",
+                &id.to_string(),
+                serde_json::json!({"action": "role_change", "role": role}),
+            );
+            entry.value().clone()
+        })
+    }
+
+    // ─── Invitations ──────────────────────────────────────────────────────
+
+    pub fn list_invitations(&self) -> Vec<serde_json::Value> {
+        let mut invitations: Vec<serde_json::Value> =
+            self.invitations.iter().map(|r| r.value().clone()).collect();
+        invitations.sort_by(|a, b| {
+            let a_date = a.get("created_at").and_then(|v| v.as_str()).unwrap_or("");
+            let b_date = b.get("created_at").and_then(|v| v.as_str()).unwrap_or("");
+            b_date.cmp(a_date)
+        });
+        invitations
+    }
+
+    pub fn create_invitation(&self, mut req: serde_json::Value, actor: &str) -> serde_json::Value {
+        let id = Uuid::new_v4();
+        let now = Utc::now();
+        let expires = now + chrono::Duration::days(7);
+        req["id"] = serde_json::json!(id);
+        req["status"] = serde_json::json!("pending");
+        req["created_at"] = serde_json::json!(now.to_rfc3339());
+        req["expires_at"] = serde_json::json!(expires.to_rfc3339());
+        self.invitations.insert(id, req.clone());
+        self.log_audit(
+            actor,
+            AuditAction::Create,
+            "invitation",
+            &id.to_string(),
+            serde_json::json!({"email": req.get("email")}),
+        );
+        req
+    }
+
+    pub fn revoke_invitation(&self, id: Uuid, actor: &str) -> bool {
+        let updated = self.invitations.get_mut(&id).map(|mut entry| {
+            entry.value_mut()["status"] = serde_json::json!("revoked");
+        });
+        if updated.is_some() {
+            self.log_audit(
+                actor,
+                AuditAction::Delete,
+                "invitation",
+                &id.to_string(),
+                serde_json::json!({}),
+            );
+        }
+        updated.is_some()
+    }
+
     // ─── Platform: Tenants ────────────────────────────────────────────────
 
     pub fn list_tenants(&self) -> Vec<serde_json::Value> {
         self.tenants.iter().map(|r| r.value().clone()).collect()
+    }
+
+    pub fn get_tenant(&self, id: Uuid) -> Option<serde_json::Value> {
+        self.tenants.get(&id).map(|r| r.value().clone())
+    }
+
+    pub fn create_tenant(&self, mut req: serde_json::Value, actor: &str) -> serde_json::Value {
+        let id = Uuid::new_v4();
+        let now = Utc::now().to_rfc3339();
+        req["id"] = serde_json::json!(id);
+        req["created_at"] = serde_json::json!(now);
+        req["updated_at"] = serde_json::json!(now);
+        if req.get("status").is_none() {
+            req["status"] = serde_json::json!("active");
+        }
+        if req.get("owner_id").is_none() {
+            req["owner_id"] = serde_json::json!(Uuid::new_v4());
+        }
+        if req.get("settings").is_none() {
+            req["settings"] = serde_json::json!({
+                "max_campaigns": 10,
+                "max_users": 5,
+                "max_offers_per_hour": 1_000_000,
+                "max_api_calls_per_day": 50_000,
+                "features_enabled": ["campaigns", "analytics"],
+                "data_retention_days": 90,
+            });
+        }
+        if req.get("usage").is_none() {
+            req["usage"] = serde_json::json!({
+                "campaigns_active": 0,
+                "users_count": 0,
+                "offers_served_today": 0,
+                "api_calls_today": 0,
+                "storage_bytes": 0,
+            });
+        }
+        self.tenants.insert(id, req.clone());
+        self.log_audit(
+            actor,
+            AuditAction::Create,
+            "tenant",
+            &id.to_string(),
+            serde_json::json!({"name": req.get("name")}),
+        );
+        req
+    }
+
+    pub fn update_tenant(
+        &self,
+        id: Uuid,
+        updates: serde_json::Value,
+        actor: &str,
+    ) -> Option<serde_json::Value> {
+        self.tenants.get_mut(&id).map(|mut entry| {
+            let tenant = entry.value_mut();
+            if let Some(name) = updates.get("name") {
+                tenant["name"] = name.clone();
+            }
+            if let Some(slug) = updates.get("slug") {
+                tenant["slug"] = slug.clone();
+            }
+            if let Some(status) = updates.get("status") {
+                tenant["status"] = status.clone();
+            }
+            if let Some(tier) = updates.get("pricing_tier") {
+                tenant["pricing_tier"] = tier.clone();
+            }
+            if let Some(settings) = updates.get("settings") {
+                tenant["settings"] = settings.clone();
+            }
+            tenant["updated_at"] = serde_json::json!(Utc::now().to_rfc3339());
+            self.log_audit(
+                actor,
+                AuditAction::Update,
+                "tenant",
+                &id.to_string(),
+                serde_json::json!({"fields": updates}),
+            );
+            tenant.clone()
+        })
+    }
+
+    pub fn delete_tenant(&self, id: Uuid, actor: &str) -> bool {
+        let removed = self.tenants.remove(&id).is_some();
+        if removed {
+            self.log_audit(
+                actor,
+                AuditAction::Delete,
+                "tenant",
+                &id.to_string(),
+                serde_json::json!({}),
+            );
+        }
+        removed
+    }
+
+    pub fn suspend_tenant(&self, id: Uuid, actor: &str) -> Option<serde_json::Value> {
+        self.tenants.get_mut(&id).map(|mut entry| {
+            entry.value_mut()["status"] = serde_json::json!("suspended");
+            entry.value_mut()["updated_at"] = serde_json::json!(Utc::now().to_rfc3339());
+            self.log_audit(
+                actor,
+                AuditAction::Update,
+                "tenant",
+                &id.to_string(),
+                serde_json::json!({"action": "suspend"}),
+            );
+            entry.value().clone()
+        })
+    }
+
+    pub fn activate_tenant(&self, id: Uuid, actor: &str) -> Option<serde_json::Value> {
+        self.tenants.get_mut(&id).map(|mut entry| {
+            entry.value_mut()["status"] = serde_json::json!("active");
+            entry.value_mut()["updated_at"] = serde_json::json!(Utc::now().to_rfc3339());
+            self.log_audit(
+                actor,
+                AuditAction::Update,
+                "tenant",
+                &id.to_string(),
+                serde_json::json!({"action": "activate"}),
+            );
+            entry.value().clone()
+        })
     }
 
     pub fn list_roles(&self) -> Vec<serde_json::Value> {
@@ -1565,6 +1839,87 @@ impl ManagementStore {
                 "affected_components": ["Bidding Engine", "NPU Engine"],
                 "created_at": (now - chrono::Duration::days(3)).to_rfc3339(),
                 "resolved_at": (now - chrono::Duration::days(3) + chrono::Duration::hours(2)).to_rfc3339()
+            }),
+        );
+    }
+
+    // ─── Seed: Users ─────────────────────────────────────────────────────
+
+    fn seed_user_data(&self) {
+        let now = Utc::now();
+        let users_data = vec![
+            (
+                "admin@campaignexpress.io",
+                "Platform Admin",
+                "active",
+                "Admin",
+                "local",
+            ),
+            (
+                "sarah.chen@acme.com",
+                "Sarah Chen",
+                "active",
+                "Campaign Manager",
+                "oauth2",
+            ),
+            (
+                "mike.johnson@acme.com",
+                "Mike Johnson",
+                "active",
+                "Analyst",
+                "oauth2",
+            ),
+            (
+                "emily.davis@acme.com",
+                "Emily Davis",
+                "active",
+                "Campaign Manager",
+                "saml",
+            ),
+            (
+                "james.wilson@acme.com",
+                "James Wilson",
+                "active",
+                "Viewer",
+                "local",
+            ),
+            (
+                "lisa.park@acme.com",
+                "Lisa Park",
+                "disabled",
+                "Analyst",
+                "oauth2",
+            ),
+        ];
+        for (email, name, status, role, provider) in users_data {
+            let id = Uuid::new_v4();
+            self.users.insert(
+                id,
+                serde_json::json!({
+                    "id": id,
+                    "email": email,
+                    "display_name": name,
+                    "status": status,
+                    "role": role,
+                    "auth_provider": provider,
+                    "created_at": (now - chrono::Duration::days(30)).to_rfc3339(),
+                    "last_login": if status == "active" { serde_json::json!((now - chrono::Duration::hours(2)).to_rfc3339()) } else { serde_json::Value::Null },
+                }),
+            );
+        }
+
+        // Pending invitation
+        let inv_id = Uuid::new_v4();
+        self.invitations.insert(
+            inv_id,
+            serde_json::json!({
+                "id": inv_id,
+                "email": "new.hire@acme.com",
+                "role": "Campaign Manager",
+                "status": "pending",
+                "invited_by": "admin@campaignexpress.io",
+                "created_at": (now - chrono::Duration::days(1)).to_rfc3339(),
+                "expires_at": (now + chrono::Duration::days(6)).to_rfc3339(),
             }),
         );
     }

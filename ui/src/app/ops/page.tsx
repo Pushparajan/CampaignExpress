@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Incident, BackupSchedule } from "@/lib/types";
+import { formatDate } from "@/lib/format-date";
 
 export default function OpsPage() {
   const { data: statusPage } = useQuery<Record<string, unknown>>({
@@ -171,7 +172,7 @@ export default function OpsPage() {
                     {inc.affected_components.join(", ")}
                   </td>
                   <td className="px-4 py-3 text-gray-400">
-                    {new Date(inc.created_at).toLocaleDateString()}
+                    {formatDate(inc.created_at)}
                   </td>
                 </tr>
               ))}
@@ -220,14 +221,14 @@ export default function OpsPage() {
                   <span className="text-gray-500">Last Run</span>
                   <p className="text-gray-300">
                     {backup.last_run
-                      ? new Date(backup.last_run).toLocaleDateString()
+                      ? formatDate(backup.last_run)
                       : "Never"}
                   </p>
                 </div>
                 <div>
                   <span className="text-gray-500">Next Run</span>
                   <p className="text-gray-300">
-                    {new Date(backup.next_run).toLocaleDateString()}
+                    {formatDate(backup.next_run)}
                   </p>
                 </div>
               </div>

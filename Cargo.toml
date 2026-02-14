@@ -31,6 +31,7 @@ members = [
     "crates/web-sdk",
     "crates/admin-console",
     "crates/agentic-testing",
+    "crates/devops-toolkit",
     "src/campaign-express",
     "src/license-admin",
 ]
@@ -91,6 +92,8 @@ dashmap = "5.5"
 parking_lot = "0.12"
 bytes = "1.5"
 base64 = "0.22"
+sha2 = "0.10"
+hex = "0.4"
 url = "2.5"
 
 # Internal crates
@@ -123,6 +126,7 @@ campaign-licensing = { path = "crates/licensing" }
 campaign-web-sdk = { path = "crates/web-sdk" }
 campaign-admin-console = { path = "crates/admin-console" }
 campaign-agentic-testing = { path = "crates/agentic-testing" }
+campaign-devops-toolkit = { path = "crates/devops-toolkit" }
 
 [profile.release]
 opt-level = 3

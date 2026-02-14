@@ -199,19 +199,13 @@ impl ModelWeights {
     fn synthetic(input_dim: usize, output_dim: usize) -> Self {
         let hidden_dim = 64;
 
-        let mut layer1 = Array2::<f32>::zeros((input_dim, hidden_dim));
-        for i in 0..input_dim {
-            for j in 0..hidden_dim {
-                layer1[[i, j]] = ((i * 7 + j * 13) as f32 % 100.0 - 50.0) / 500.0;
-            }
-        }
-
-        let mut layer2 = Array2::<f32>::zeros((hidden_dim, output_dim));
-        for i in 0..hidden_dim {
-            for j in 0..output_dim {
-                layer2[[i, j]] = ((i * 11 + j * 3) as f32 % 100.0 - 50.0) / 500.0;
-            }
-        }
+        // Use from_shape_fn for cache-friendly sequential init (avoids bounds checks)
+        let layer1 = Array2::from_shape_fn((input_dim, hidden_dim), |(i, j)| {
+            ((i * 7 + j * 13) as f32 % 100.0 - 50.0) / 500.0
+        });
+        let layer2 = Array2::from_shape_fn((hidden_dim, output_dim), |(i, j)| {
+            ((i * 11 + j * 3) as f32 % 100.0 - 50.0) / 500.0
+        });
 
         let bias1 = vec![0.01; hidden_dim];
         let bias2 = vec![0.01; output_dim];
@@ -231,17 +225,16 @@ impl ModelWeights {
     }
 
     /// Forward pass through hidden layer only (shared computation for multi-head).
+    /// Uses in-place ndarray ops to avoid extra allocation and enable vectorization.
     fn forward_hidden(&self, input: &Array2<f32>) -> Array2<f32> {
-        let hidden = input.dot(&self.layer1);
-        let mut activated = Array2::<f32>::zeros(hidden.raw_dim());
-        for i in 0..hidden.nrows() {
-            for j in 0..hidden.ncols() {
-                let val = hidden[[i, j]] + self.bias1[j];
-                // SNN-inspired activation: spike if membrane potential exceeds threshold
-                activated[[i, j]] = if val > 0.0 { val.tanh() } else { 0.0 };
-            }
-        }
-        activated
+        let mut hidden = input.dot(&self.layer1);
+        // Add bias column-wise in-place (avoids temporary array allocation)
+        hidden.indexed_iter_mut().for_each(|((_, j), val)| {
+            *val += self.bias1[j];
+        });
+        // SNN-inspired activation: spike if membrane potential exceeds threshold
+        hidden.mapv_inplace(|val| if val > 0.0 { val.tanh() } else { 0.0 });
+        hidden
     }
 
     /// Forward pass from hidden activations to output scores.
@@ -260,12 +253,9 @@ impl ModelWeights {
 impl VariantHead {
     /// Generate synthetic variant scoring weights.
     fn synthetic(hidden_dim: usize, output_dim: usize) -> Self {
-        let mut weights = Array2::<f32>::zeros((hidden_dim, output_dim));
-        for i in 0..hidden_dim {
-            for j in 0..output_dim {
-                weights[[i, j]] = ((i * 5 + j * 17) as f32 % 100.0 - 50.0) / 600.0;
-            }
-        }
+        let weights = Array2::from_shape_fn((hidden_dim, output_dim), |(i, j)| {
+            ((i * 5 + j * 17) as f32 % 100.0 - 50.0) / 600.0
+        });
         let bias = vec![0.005; output_dim];
         Self {
             weights,

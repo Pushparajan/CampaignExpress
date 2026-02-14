@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -27,24 +28,28 @@ import StatusBadge from "@/components/status-badge";
 import { api } from "@/lib/api";
 import type { Campaign, MonitoringOverview } from "@/lib/types";
 
-// Generate mock throughput data for the chart when real data is available
+// Seeded PRNG for deterministic chart data (avoids SSR/client hydration mismatch)
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
 function generateThroughputData(overview: MonitoringOverview | undefined) {
   const hours = [];
-  const now = new Date();
+  const rand = seededRandom(42);
   for (let i = 23; i >= 0; i--) {
-    const hour = new Date(now.getTime() - i * 3600000);
+    const hour = `${String(23 - i).padStart(2, "0")}:00`;
     const baseRate = overview ? overview.offers_per_hour / 24 : 2_000_000;
-    const variance = 0.8 + Math.random() * 0.4;
+    const variance = 0.8 + rand() * 0.4;
     hours.push({
-      time: hour.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }),
+      time: hour,
       throughput: Math.round(baseRate * variance),
       latency: overview
-        ? Math.round(overview.avg_latency_us * (0.7 + Math.random() * 0.6))
-        : Math.round(800 + Math.random() * 400),
+        ? Math.round(overview.avg_latency_us * (0.7 + rand() * 0.6))
+        : Math.round(800 + rand() * 400),
     });
   }
   return hours;
@@ -72,7 +77,7 @@ export default function DashboardPage() {
     queryFn: () => api.listCampaigns(),
   });
 
-  const throughputData = generateThroughputData(overview);
+  const throughputData = useMemo(() => generateThroughputData(overview), [overview]);
   const recentCampaigns = campaigns?.slice(0, 5) ?? [];
 
   const isLoading = overviewLoading || campaignsLoading;
@@ -272,7 +277,10 @@ export default function DashboardPage() {
               recentCampaigns.map((campaign: Campaign) => (
                 <div
                   key={campaign.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => router.push(`/campaigns/${campaign.id}`)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push(`/campaigns/${campaign.id}`); }}
                   className="flex items-center justify-between px-5 py-3 hover:bg-gray-700/30 cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">

@@ -6,18 +6,25 @@
 
 pub mod activation;
 pub mod content_cards;
+pub mod content_studio;
 pub mod email;
 pub mod in_app;
 pub mod ingest;
 pub mod sms;
+pub mod templates;
 pub mod web_push;
 pub mod whatsapp;
 
 pub use activation::ActivationDispatcher;
 pub use content_cards::ContentCardEngine;
+pub use content_studio::{
+    ComplianceChecker, EmailTemplateBuilder, HtmlEditor, LocalizationEngine,
+    RenderTimePersonalizer, VariableBrowser,
+};
 pub use email::SendGridProvider;
 pub use in_app::InAppEngine;
 pub use ingest::IngestProcessor;
 pub use sms::SmsProvider;
+pub use templates::{BlockLibrary, TemplateLibrary};
 pub use web_push::WebPushProvider;
 pub use whatsapp::WhatsAppProvider;

@@ -7,7 +7,10 @@ type Status =
   | "completed"
   | "error"
   | "pending_review"
-  | "rejected";
+  | "rejected"
+  | "archived"
+  | "running"
+  | "cancelled";
 
 interface StatusBadgeProps {
   status: Status;
@@ -50,6 +53,21 @@ const statusStyles: Record<Status, { bg: string; text: string; dot: string }> = 
     text: "text-red-400",
     dot: "bg-red-400",
   },
+  archived: {
+    bg: "bg-gray-400/10",
+    text: "text-gray-500",
+    dot: "bg-gray-500",
+  },
+  running: {
+    bg: "bg-cyan-400/10",
+    text: "text-cyan-400",
+    dot: "bg-cyan-400",
+  },
+  cancelled: {
+    bg: "bg-gray-400/10",
+    text: "text-gray-400",
+    dot: "bg-gray-400",
+  },
 };
 
 const statusLabels: Record<Status, string> = {
@@ -60,6 +78,9 @@ const statusLabels: Record<Status, string> = {
   error: "Error",
   pending_review: "Pending Review",
   rejected: "Rejected",
+  archived: "Archived",
+  running: "Running",
+  cancelled: "Cancelled",
 };
 
 export default function StatusBadge({ status, className }: StatusBadgeProps) {

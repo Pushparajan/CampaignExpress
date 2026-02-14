@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Palette, Plus, Layers, Sparkles, Loader2, AlertCircle } from "lucide-react";
 import StatusBadge from "@/components/status-badge";
 import { api } from "@/lib/api";
 import type { DcoTemplate } from "@/lib/types";
+import { formatDate } from "@/lib/format-date";
 
 export default function DcoPage() {
   const { data: templates, isLoading, error } = useQuery({
@@ -31,13 +33,18 @@ export default function DcoPage() {
     );
   }
 
-  const active = templates?.filter((t: DcoTemplate) => t.status === "active").length ?? 0;
-  const totalComponents = templates?.reduce((sum: number, t: DcoTemplate) => sum + (t.components?.length ?? 0), 0) ?? 0;
-  const totalVariants = templates?.reduce(
-    (sum: number, t: DcoTemplate) =>
-      sum + (t.components?.reduce((vs: number, c) => vs + (c.variants?.length ?? 0), 0) ?? 0),
-    0
-  ) ?? 0;
+  const { active, totalComponents, totalVariants } = useMemo(() => {
+    const list = templates ?? [];
+    return {
+      active: list.filter((t: DcoTemplate) => t.status === "active").length,
+      totalComponents: list.reduce((sum: number, t: DcoTemplate) => sum + (t.components?.length ?? 0), 0),
+      totalVariants: list.reduce(
+        (sum: number, t: DcoTemplate) =>
+          sum + (t.components?.reduce((vs: number, c) => vs + (c.variants?.length ?? 0), 0) ?? 0),
+        0
+      ),
+    };
+  }, [templates]);
 
   return (
     <div className="space-y-6">
@@ -86,7 +93,7 @@ export default function DcoPage() {
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-3">
-              Created {new Date(template.created_at).toLocaleDateString()}
+              Created {formatDate(template.created_at)}
             </p>
           </div>
         ))}

@@ -280,6 +280,14 @@ export interface Tenant {
   updated_at: string;
 }
 
+export interface TenantCreatePayload {
+  name: string;
+  slug: string;
+  pricing_tier: Tenant["pricing_tier"];
+}
+
+export type TenantUpdatePayload = Partial<Pick<Tenant, "name" | "slug" | "status" | "pricing_tier">>;
+
 export interface TenantSettings {
   max_campaigns: number;
   max_users: number;
@@ -322,6 +330,29 @@ export interface DataSubjectRequest {
   status: "pending" | "in_progress" | "completed" | "failed";
   requested_at: string;
   completed_at?: string;
+}
+
+// ─── User Types ───────────────────────────────────────────────────────
+
+export interface ManagedUser {
+  id: string;
+  email: string;
+  display_name: string;
+  status: "active" | "invited" | "disabled" | "locked";
+  role: string;
+  auth_provider: "local" | "oauth2" | "saml" | "api_key";
+  created_at: string;
+  last_login?: string;
+}
+
+export interface UserInvitation {
+  id: string;
+  email: string;
+  role: string;
+  status: "pending" | "accepted" | "expired" | "revoked";
+  invited_by: string;
+  created_at: string;
+  expires_at: string;
 }
 
 // ─── Billing Types ─────────────────────────────────────────────────────

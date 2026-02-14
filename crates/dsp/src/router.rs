@@ -17,7 +17,7 @@ pub struct DspRouter {
 
 impl DspRouter {
     pub fn new(config: &DspIntegrationConfig, dsp_configs: Vec<DspConfig>) -> Self {
-        let mut clients: Vec<Arc<dyn DspClient>> = Vec::new();
+        let mut clients: Vec<Arc<dyn DspClient>> = Vec::with_capacity(dsp_configs.len());
 
         for cfg in &dsp_configs {
             if !cfg.enabled {
@@ -62,7 +62,7 @@ impl DspRouter {
             sent_at: Utc::now(),
         };
 
-        let mut responses = Vec::new();
+        let mut responses = Vec::with_capacity(self.clients.len());
 
         for client in &self.clients {
             let mut req = dsp_request.clone();

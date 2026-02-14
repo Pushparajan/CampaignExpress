@@ -1,12 +1,13 @@
 "use client";
 
-import { Inter } from "next/font/google";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import Layout from "@/components/layout";
+import ErrorBoundary from "@/components/error-boundary";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const FONT_CLASS =
+  "font-sans antialiased";
 
 export default function RootLayout({
   children,
@@ -35,9 +36,11 @@ export default function RootLayout({
           content="Campaign Express Management Dashboard"
         />
       </head>
-      <body className={inter.className}>
+      <body className={FONT_CLASS}>
         <QueryClientProvider client={queryClient}>
-          <Layout>{children}</Layout>
+          <ErrorBoundary>
+            <Layout>{children}</Layout>
+          </ErrorBoundary>
         </QueryClientProvider>
       </body>
     </html>

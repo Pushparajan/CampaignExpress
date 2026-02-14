@@ -150,10 +150,12 @@ impl BatchWriter {
         debug!(count = count, "Flushing analytics batch to ClickHouse");
 
         // Serialize events as NDJSON and insert
-        let json_rows: Vec<String> = buffer
-            .iter()
-            .filter_map(|e| serde_json::to_string(e).ok())
-            .collect();
+        let mut json_rows = Vec::with_capacity(buffer.len());
+        for e in buffer.iter() {
+            if let Ok(json) = serde_json::to_string(e) {
+                json_rows.push(json);
+            }
+        }
 
         if json_rows.is_empty() {
             buffer.clear();

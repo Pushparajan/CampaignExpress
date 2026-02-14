@@ -1,10 +1,26 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Plus,
+  Trash2,
+  Loader2,
+  X,
+  Ban,
+  CheckCircle2,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import type { Tenant, Role, ComplianceStatus, DataSubjectRequest } from "@/lib/types";
+import { formatDate } from "@/lib/format-date";
+
+const TIERS = ["free", "starter", "professional", "enterprise", "custom"] as const;
 
 export default function PlatformPage() {
+  const queryClient = useQueryClient();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Tenant | null>(null);
+
   const { data: tenants = [] } = useQuery<Tenant[]>({
     queryKey: ["tenants"],
     queryFn: () => api.listTenants(),
@@ -23,6 +39,24 @@ export default function PlatformPage() {
   const { data: dsrs = [] } = useQuery<DataSubjectRequest[]>({
     queryKey: ["dsrs"],
     queryFn: () => api.listDsrs(),
+  });
+
+  const suspendMutation = useMutation({
+    mutationFn: (id: string) => api.suspendTenant(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tenants"] }),
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: (id: string) => api.activateTenant(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tenants"] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteTenant(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenants"] });
+      setDeleteTarget(null);
+    },
   });
 
   const tierColors: Record<string, string> = {
@@ -51,7 +85,15 @@ export default function PlatformPage() {
 
       {/* Tenants */}
       <section>
-        <h2 className="text-lg font-semibold text-white mb-4">Tenants</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">Tenants</h2>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary/80 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add Tenant
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {tenants.map((tenant) => (
             <div
@@ -90,6 +132,33 @@ export default function PlatformPage() {
                     {(tenant.usage?.offers_served_today ?? 0).toLocaleString()}
                   </p>
                 </div>
+              </div>
+              {/* Tenant actions */}
+              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-gray-700">
+                {tenant.status === "active" ? (
+                  <button
+                    onClick={() => suspendMutation.mutate(tenant.id)}
+                    aria-label={`Suspend ${tenant.name}`}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs text-amber-400 hover:bg-amber-400/10 rounded transition-colors"
+                  >
+                    <Ban className="w-3.5 h-3.5" /> Suspend
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => activateMutation.mutate(tenant.id)}
+                    aria-label={`Activate ${tenant.name}`}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs text-emerald-400 hover:bg-emerald-400/10 rounded transition-colors"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Activate
+                  </button>
+                )}
+                <button
+                  onClick={() => setDeleteTarget(tenant)}
+                  aria-label={`Delete ${tenant.name}`}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs text-red-400 hover:bg-red-400/10 rounded transition-colors ml-auto"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Remove
+                </button>
               </div>
             </div>
           ))}
@@ -172,7 +241,7 @@ export default function PlatformPage() {
               </p>
               {c.last_audit && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Last: {new Date(c.last_audit).toLocaleDateString()}
+                  Last: {formatDate(c.last_audit)}
                 </p>
               )}
             </div>
@@ -234,7 +303,7 @@ export default function PlatformPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-400">
-                    {new Date(dsr.requested_at).toLocaleDateString()}
+                    {formatDate(dsr.requested_at)}
                   </td>
                 </tr>
               ))}
@@ -242,6 +311,155 @@ export default function PlatformPage() {
           </table>
         </div>
       </section>
+
+      {/* Create Tenant Modal */}
+      {showCreateModal && (
+        <CreateTenantModal onClose={() => setShowCreateModal(false)} />
+      )}
+
+      {/* Delete Confirmation */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div
+            role="dialog"
+            aria-label="Confirm tenant deletion"
+            className="bg-gray-800 border border-gray-700 rounded-xl w-full max-w-sm p-6"
+          >
+            <h3 className="text-lg font-semibold text-white mb-2">Remove Tenant</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              Are you sure you want to remove <span className="text-white font-medium">{deleteTarget.name}</span>?
+              All associated data will be permanently deleted.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm font-medium rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {deleteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreateTenantModal({ onClose }: { onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [tier, setTier] = useState<typeof TIERS[number]>("starter");
+
+  const createMutation = useMutation({
+    mutationFn: () => api.createTenant({ name, slug, pricing_tier: tier }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenants"] });
+      onClose();
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div
+        role="dialog"
+        aria-label="Create tenant"
+        className="bg-gray-800 border border-gray-700 rounded-xl w-full max-w-md p-6"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Add Tenant</h3>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="p-1 text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            createMutation.mutate();
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <label htmlFor="tenant-name" className="block text-xs font-medium text-gray-400 mb-1">
+              Organization Name
+            </label>
+            <input
+              id="tenant-name"
+              type="text"
+              required
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (!slug || slug === name.toLowerCase().replace(/\s+/g, "-")) {
+                  setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
+                }
+              }}
+              placeholder="Acme Corp"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+          <div>
+            <label htmlFor="tenant-slug" className="block text-xs font-medium text-gray-400 mb-1">
+              URL Slug
+            </label>
+            <input
+              id="tenant-slug"
+              type="text"
+              required
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="acme-corp"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+          <div>
+            <label htmlFor="tenant-tier" className="block text-xs font-medium text-gray-400 mb-1">
+              Pricing Tier
+            </label>
+            <select
+              id="tenant-tier"
+              value={tier}
+              onChange={(e) => setTier(e.target.value as typeof TIERS[number])}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              {TIERS.map((t) => (
+                <option key={t} value={t}>
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm font-medium rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Create Tenant
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 //! and 20+ third-party platforms.
 
 pub mod bi_tools;
+pub mod capabilities;
 pub mod connector;
 pub mod dam;
 pub mod marketplace;
@@ -9,6 +10,7 @@ pub mod task_management;
 pub mod webhook;
 
 pub use bi_tools::BiToolsAdaptor;
+pub use capabilities::ConnectorCapabilityRegistry;
 pub use connector::IntegrationConnector;
 pub use dam::DamAdaptor;
 pub use marketplace::IntegrationMarketplace;

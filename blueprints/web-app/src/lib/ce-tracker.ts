@@ -11,8 +11,6 @@
  *   tracker.trackPurchase("order-123", 49.99, "USD");
  */
 
-import { v4 as uuidv4 } from "crypto";
-
 interface TrackerConfig {
   apiKey: string;
   endpoint: string;

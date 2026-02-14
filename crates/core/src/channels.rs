@@ -159,6 +159,8 @@ impl ActivationChannel {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActivationRequest {
     pub activation_id: String,
+    /// Links this activation back to the decisioning/bid that selected it (FR-ACT-001).
+    pub decision_id: Option<String>,
     pub user_id: String,
     pub channel: ActivationChannel,
     pub offer_id: String,
@@ -171,6 +173,10 @@ pub struct ActivationRequest {
     /// Originating ingest event that triggered this activation.
     pub trigger_event_id: Option<String>,
     pub trigger_source: Option<IngestSource>,
+    /// Campaign or journey that originated this activation (FR-ACT-002).
+    pub campaign_id: Option<String>,
+    /// Experiment variant if activation is part of an A/B test (FR-ACT-003).
+    pub experiment_variant_id: Option<String>,
 }
 
 /// Content payload for an activation message.
