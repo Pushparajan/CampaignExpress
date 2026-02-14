@@ -133,9 +133,10 @@ impl ClickStreamProcessor {
             WebEventType::Scroll => {
                 if let Some(depth) = event.properties.get("depth_percent") {
                     if let Some(pct) = depth.as_u64() {
+                        let capped_pct = pct.min(100) as u8;
                         if let Some(page) = session.page_trail.last_mut() {
                             let current = page.scroll_depth_percent.unwrap_or(0);
-                            page.scroll_depth_percent = Some(current.max(pct as u8));
+                            page.scroll_depth_percent = Some(current.max(capped_pct));
                         }
                     }
                 }

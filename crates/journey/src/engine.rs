@@ -291,7 +291,7 @@ impl JourneyEngine {
             total_entered += 1;
             match inst.status {
                 InstanceStatus::Active => active += 1,
-                InstanceStatus::Waiting => active += 1,
+                InstanceStatus::Waiting => {} // Waiting instances are NOT active
                 InstanceStatus::Completed => {
                     completed += 1;
                     let duration = inst

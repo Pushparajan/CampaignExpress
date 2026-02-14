@@ -52,10 +52,17 @@ pub async fn get_campaign(
 pub async fn create_campaign(
     State(state): State<ManagementState>,
     Json(req): Json<CreateCampaignRequest>,
-) -> (StatusCode, Json<Campaign>) {
-    let campaign = state.store.create_campaign(req, "admin");
-    metrics::counter!("management.campaigns.created").increment(1);
-    (StatusCode::CREATED, Json(campaign))
+) -> Result<(StatusCode, Json<Campaign>), (StatusCode, Json<serde_json::Value>)> {
+    match state.store.create_campaign(req, "admin") {
+        Ok(campaign) => {
+            metrics::counter!("management.campaigns.created").increment(1);
+            Ok((StatusCode::CREATED, Json(campaign)))
+        }
+        Err(msg) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": msg})),
+        )),
+    }
 }
 
 pub async fn update_campaign(
@@ -124,10 +131,17 @@ pub async fn get_creative(
 pub async fn create_creative(
     State(state): State<ManagementState>,
     Json(req): Json<CreateCreativeRequest>,
-) -> (StatusCode, Json<Creative>) {
-    let creative = state.store.create_creative(req, "admin");
-    metrics::counter!("management.creatives.created").increment(1);
-    (StatusCode::CREATED, Json(creative))
+) -> Result<(StatusCode, Json<Creative>), (StatusCode, Json<serde_json::Value>)> {
+    match state.store.create_creative(req, "admin") {
+        Ok(creative) => {
+            metrics::counter!("management.creatives.created").increment(1);
+            Ok((StatusCode::CREATED, Json(creative)))
+        }
+        Err(msg) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": msg})),
+        )),
+    }
 }
 
 pub async fn update_creative(

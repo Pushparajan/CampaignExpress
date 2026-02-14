@@ -91,12 +91,15 @@ impl SystemSettings {
 
     /// Get the current system configuration.
     pub fn get_config(&self) -> SystemConfig {
-        self.config.read().unwrap().clone()
+        self.config
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Enable maintenance mode with an optional message.
     pub fn enable_maintenance(&self, message: Option<String>, actor: &str) {
-        let mut cfg = self.config.write().unwrap();
+        let mut cfg = self.config.write().unwrap_or_else(|e| e.into_inner());
         self.log_change(
             "maintenance_mode",
             &cfg.maintenance_mode.to_string(),
@@ -111,7 +114,7 @@ impl SystemSettings {
 
     /// Disable maintenance mode.
     pub fn disable_maintenance(&self, actor: &str) {
-        let mut cfg = self.config.write().unwrap();
+        let mut cfg = self.config.write().unwrap_or_else(|e| e.into_inner());
         self.log_change(
             "maintenance_mode",
             &cfg.maintenance_mode.to_string(),
@@ -126,7 +129,10 @@ impl SystemSettings {
 
     /// Update rate limit defaults.
     pub fn set_rate_limits(&self, rps: u32, rpm: u32, actor: &str) {
-        let mut cfg = self.config.write().unwrap();
+        if rps == 0 || rpm == 0 {
+            return;
+        }
+        let mut cfg = self.config.write().unwrap_or_else(|e| e.into_inner());
         self.log_change(
             "default_rate_limit_rps",
             &cfg.default_rate_limit_rps.to_string(),
@@ -140,7 +146,7 @@ impl SystemSettings {
 
     /// Toggle self-registration.
     pub fn set_self_registration(&self, enabled: bool, actor: &str) {
-        let mut cfg = self.config.write().unwrap();
+        let mut cfg = self.config.write().unwrap_or_else(|e| e.into_inner());
         self.log_change(
             "allow_self_registration",
             &cfg.allow_self_registration.to_string(),
@@ -153,7 +159,7 @@ impl SystemSettings {
 
     /// Set MFA requirement.
     pub fn set_mfa_required(&self, required: bool, actor: &str) {
-        let mut cfg = self.config.write().unwrap();
+        let mut cfg = self.config.write().unwrap_or_else(|e| e.into_inner());
         self.log_change(
             "mfa_required",
             &cfg.mfa_required.to_string(),
@@ -166,7 +172,10 @@ impl SystemSettings {
 
     /// Set password minimum length.
     pub fn set_password_min_length(&self, length: u8, actor: &str) {
-        let mut cfg = self.config.write().unwrap();
+        if length < 4 {
+            return;
+        }
+        let mut cfg = self.config.write().unwrap_or_else(|e| e.into_inner());
         self.log_change(
             "password_min_length",
             &cfg.password_min_length.to_string(),
@@ -179,7 +188,10 @@ impl SystemSettings {
 
     /// Set data retention period.
     pub fn set_data_retention_days(&self, days: u32, actor: &str) {
-        let mut cfg = self.config.write().unwrap();
+        if days == 0 {
+            return;
+        }
+        let mut cfg = self.config.write().unwrap_or_else(|e| e.into_inner());
         self.log_change(
             "data_retention_days",
             &cfg.data_retention_days.to_string(),

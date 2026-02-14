@@ -84,7 +84,27 @@ impl ManagementStore {
         self.campaigns.get(&id).map(|r| r.value().clone())
     }
 
-    pub fn create_campaign(&self, req: CreateCampaignRequest, user: &str) -> Campaign {
+    pub fn create_campaign(
+        &self,
+        req: CreateCampaignRequest,
+        user: &str,
+    ) -> Result<Campaign, String> {
+        // Validate budget
+        if req.budget < 0.0 {
+            return Err("Budget cannot be negative".into());
+        }
+        if req.daily_budget < 0.0 {
+            return Err("Daily budget cannot be negative".into());
+        }
+        if req.daily_budget > req.budget && req.budget > 0.0 {
+            return Err("Daily budget cannot exceed total budget".into());
+        }
+        // Validate schedule
+        if let (Some(start), Some(end)) = (req.schedule_start, req.schedule_end) {
+            if end <= start {
+                return Err("Schedule end must be after schedule start".into());
+            }
+        }
         let now = Utc::now();
         let campaign = Campaign {
             id: Uuid::new_v4(),
@@ -109,7 +129,7 @@ impl ManagementStore {
             &id.to_string(),
             serde_json::json!({"name": &campaign.name}),
         );
-        campaign
+        Ok(campaign)
     }
 
     pub fn update_campaign(
@@ -220,7 +240,14 @@ impl ManagementStore {
         self.creatives.get(&id).map(|r| r.value().clone())
     }
 
-    pub fn create_creative(&self, req: CreateCreativeRequest, user: &str) -> Creative {
+    pub fn create_creative(
+        &self,
+        req: CreateCreativeRequest,
+        user: &str,
+    ) -> Result<Creative, String> {
+        if req.width == 0 || req.height == 0 {
+            return Err("Creative dimensions must be greater than zero".into());
+        }
         let now = Utc::now();
         let creative = Creative {
             id: Uuid::new_v4(),
@@ -244,7 +271,7 @@ impl ManagementStore {
             &id.to_string(),
             serde_json::json!({"name": &creative.name}),
         );
-        creative
+        Ok(creative)
     }
 
     pub fn update_creative(
@@ -319,7 +346,7 @@ impl ManagementStore {
         let total_clicks: u64 = self.campaigns.iter().map(|r| r.value().stats.clicks).sum();
         let total_spend: f64 = self.campaigns.iter().map(|r| r.value().stats.spend).sum();
         let avg_ctr = if total_impressions > 0 {
-            total_clicks as f64 / total_impressions as f64
+            (total_clicks as f64 / total_impressions as f64).min(1.0)
         } else {
             0.0
         };

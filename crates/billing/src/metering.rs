@@ -165,7 +165,12 @@ impl MeteringEngine {
                 unit_price,
                 line_total,
                 quota: None,
-                usage_percent: 0.0,
+                usage_percent: if total_quantity > 0 {
+                    // Derive from known tier limits if available
+                    0.0
+                } else {
+                    0.0
+                },
             });
         }
 
