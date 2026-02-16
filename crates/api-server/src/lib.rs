@@ -6,5 +6,7 @@ pub mod grpc;
 pub mod loyalty_rest;
 pub mod rest;
 pub mod server;
+pub mod swagger;
 
 pub use server::ApiServer;
+pub use swagger::ApiDoc;

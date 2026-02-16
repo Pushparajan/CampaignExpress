@@ -7,6 +7,7 @@ use campaign_core::loyalty::*;
 use campaign_loyalty::LoyaltyEngine;
 use serde::Serialize;
 use std::sync::Arc;
+use utoipa::ToSchema;
 
 /// Shared state for loyalty endpoints.
 #[derive(Clone)]
@@ -15,6 +16,15 @@ pub struct LoyaltyState {
 }
 
 /// POST /v1/loyalty/earn — Earn stars from a purchase.
+#[utoipa::path(
+    post,
+    path = "/v1/loyalty/earn",
+    tag = "Loyalty",
+    request_body = EarnStarsRequest,
+    responses(
+        (status = 200, description = "Stars earned successfully", body = EarnStarsResponse),
+    )
+)]
 pub async fn handle_earn_stars(
     State(state): State<LoyaltyState>,
     Json(request): Json<EarnStarsRequest>,
@@ -26,6 +36,15 @@ pub async fn handle_earn_stars(
 }
 
 /// POST /v1/loyalty/redeem — Redeem stars for a reward.
+#[utoipa::path(
+    post,
+    path = "/v1/loyalty/redeem",
+    tag = "Loyalty",
+    request_body = RedeemRequest,
+    responses(
+        (status = 200, description = "Redemption result", body = RedeemResponse),
+    )
+)]
 pub async fn handle_redeem(
     State(state): State<LoyaltyState>,
     Json(request): Json<RedeemRequest>,
@@ -38,7 +57,18 @@ pub async fn handle_redeem(
     Json(response)
 }
 
-/// GET /v1/loyalty/balance/:user_id — Get loyalty balance and tier.
+/// GET /v1/loyalty/balance/{user_id} — Get loyalty balance and tier.
+#[utoipa::path(
+    get,
+    path = "/v1/loyalty/balance/{user_id}",
+    tag = "Loyalty",
+    params(
+        ("user_id" = String, Path, description = "User identifier"),
+    ),
+    responses(
+        (status = 200, description = "Loyalty balance and tier info", body = LoyaltyBalanceResponse),
+    )
+)]
 pub async fn handle_balance(
     State(state): State<LoyaltyState>,
     Path(user_id): Path<String>,
@@ -57,6 +87,15 @@ pub async fn handle_balance(
 }
 
 /// POST /v1/loyalty/reward-signal — Record an RL reward signal for SNN training.
+#[utoipa::path(
+    post,
+    path = "/v1/loyalty/reward-signal",
+    tag = "Loyalty",
+    request_body = LoyaltyRewardSignal,
+    responses(
+        (status = 202, description = "Reward signal accepted"),
+    )
+)]
 pub async fn handle_reward_signal(Json(signal): Json<LoyaltyRewardSignal>) -> StatusCode {
     metrics::counter!(
         "loyalty.reward_signals",
@@ -67,7 +106,7 @@ pub async fn handle_reward_signal(Json(signal): Json<LoyaltyRewardSignal>) -> St
     StatusCode::ACCEPTED
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct LoyaltyBalanceResponse {
     pub user_id: String,
     pub tier: LoyaltyTier,

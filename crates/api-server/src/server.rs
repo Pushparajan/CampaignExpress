@@ -4,6 +4,7 @@ use crate::channel_rest::{self, ChannelState};
 use crate::dsp_rest::{self, DspState};
 use crate::loyalty_rest::{self, LoyaltyState};
 use crate::rest::{self, AppState};
+use crate::swagger::ApiDoc;
 use axum::extract::DefaultBodyLimit;
 use axum::middleware;
 use axum::routing::{get, post};
@@ -21,6 +22,8 @@ use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::info;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 /// Maximum request body size (10 MB).
 const MAX_BODY_SIZE: usize = 10 * 1024 * 1024;
@@ -145,6 +148,10 @@ impl ApiServer {
             campaign_management::auth::auth_middleware,
         ));
 
+        // Swagger UI + OpenAPI JSON
+        let swagger_ui = SwaggerUi::new("/swagger-ui")
+            .url("/api-docs/openapi.json", ApiDoc::openapi());
+
         let app = Router::new()
             .merge(bid_routes)
             .merge(ops_routes)
@@ -152,6 +159,7 @@ impl ApiServer {
             .merge(dsp_routes)
             .merge(channel_routes)
             .merge(mgmt_routes)
+            .merge(swagger_ui)
             .layer(DefaultBodyLimit::max(MAX_BODY_SIZE))
             .layer(CompressionLayer::new())
             .layer(CorsLayer::permissive())
@@ -265,6 +273,10 @@ impl ApiServer {
             campaign_management::auth::auth_middleware,
         ));
 
+        // Swagger UI + OpenAPI JSON
+        let swagger_ui = SwaggerUi::new("/swagger-ui")
+            .url("/api-docs/openapi.json", ApiDoc::openapi());
+
         let app = Router::new()
             .merge(bid_routes)
             .merge(ops_routes)
@@ -272,6 +284,7 @@ impl ApiServer {
             .merge(dsp_routes)
             .merge(channel_routes)
             .merge(mgmt_routes)
+            .merge(swagger_ui)
             .layer(DefaultBodyLimit::max(MAX_BODY_SIZE))
             .layer(CompressionLayer::new())
             .layer(CorsLayer::permissive())

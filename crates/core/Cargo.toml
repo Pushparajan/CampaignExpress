@@ -13,3 +13,4 @@ chrono = { workspace = true }
 config = { workspace = true }
 tracing = { workspace = true }
 ndarray = { workspace = true }
+utoipa = { workspace = true }

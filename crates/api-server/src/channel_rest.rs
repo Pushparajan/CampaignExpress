@@ -8,6 +8,7 @@ use campaign_core::channels::*;
 use serde::Serialize;
 use std::sync::Arc;
 use tracing::error;
+use utoipa::ToSchema;
 
 /// Shared state for channel endpoints.
 #[derive(Clone)]
@@ -18,6 +19,16 @@ pub struct ChannelState {
 }
 
 /// POST /v1/channels/ingest — Process a real-time ingest event.
+#[utoipa::path(
+    post,
+    path = "/v1/channels/ingest",
+    tag = "Channels",
+    request_body = IngestEvent,
+    responses(
+        (status = 200, description = "Event processed successfully", body = IngestResponse),
+        (status = 400, description = "Ingest processing failed", body = ChannelErrorResponse),
+    )
+)]
 pub async fn handle_ingest(
     State(state): State<ChannelState>,
     Json(event): Json<IngestEvent>,
@@ -50,6 +61,15 @@ pub async fn handle_ingest(
 }
 
 /// POST /v1/channels/activate — Dispatch an activation to a channel.
+#[utoipa::path(
+    post,
+    path = "/v1/channels/activate",
+    tag = "Channels",
+    request_body = ActivationRequest,
+    responses(
+        (status = 200, description = "Activation dispatched", body = ActivationResult),
+    )
+)]
 pub async fn handle_activate(
     State(state): State<ChannelState>,
     Json(request): Json<ActivationRequest>,
@@ -59,6 +79,15 @@ pub async fn handle_activate(
 }
 
 /// POST /v1/webhooks/sendgrid — SendGrid delivery webhook receiver.
+#[utoipa::path(
+    post,
+    path = "/v1/webhooks/sendgrid",
+    tag = "Channels",
+    request_body = Vec<EmailWebhookEvent>,
+    responses(
+        (status = 200, description = "Webhook events processed"),
+    )
+)]
 pub async fn handle_sendgrid_webhook(
     State(state): State<ChannelState>,
     Json(events): Json<Vec<EmailWebhookEvent>>,
@@ -70,7 +99,19 @@ pub async fn handle_sendgrid_webhook(
     StatusCode::OK
 }
 
-/// GET /v1/channels/email/analytics/:activation_id — Get email analytics.
+/// GET /v1/channels/email/analytics/{activation_id} — Get email analytics.
+#[utoipa::path(
+    get,
+    path = "/v1/channels/email/analytics/{activation_id}",
+    tag = "Channels",
+    params(
+        ("activation_id" = String, Path, description = "Activation identifier"),
+    ),
+    responses(
+        (status = 200, description = "Email analytics for activation", body = EmailAnalytics),
+        (status = 404, description = "Activation not found"),
+    )
+)]
 pub async fn handle_email_analytics(
     State(state): State<ChannelState>,
     axum::extract::Path(activation_id): axum::extract::Path<String>,
@@ -82,13 +123,21 @@ pub async fn handle_email_analytics(
 }
 
 /// GET /v1/channels/email/analytics — Get all email analytics.
+#[utoipa::path(
+    get,
+    path = "/v1/channels/email/analytics",
+    tag = "Channels",
+    responses(
+        (status = 200, description = "All email analytics", body = Vec<EmailAnalytics>),
+    )
+)]
 pub async fn handle_all_email_analytics(
     State(state): State<ChannelState>,
 ) -> Json<Vec<EmailAnalytics>> {
     Json(state.sendgrid.all_analytics())
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct IngestResponse {
     pub event_id: String,
     pub user_id: String,
@@ -96,7 +145,7 @@ pub struct IngestResponse {
     pub loyalty_relevant: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ChannelErrorResponse {
     pub error: String,
     pub message: String,

@@ -8,11 +8,12 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 // ─── Ingest Sources ─────────────────────────────────────────────────────────
 
 /// Source channels that feed real-time events into the platform.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum IngestSource {
     MobileApp,
@@ -52,7 +53,7 @@ impl IngestSource {
 }
 
 /// A real-time event ingested from any source channel.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct IngestEvent {
     pub event_id: String,
     pub source: IngestSource,
@@ -66,7 +67,7 @@ pub struct IngestEvent {
     pub received_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum IngestEventType {
     Purchase,
@@ -83,7 +84,7 @@ pub enum IngestEventType {
     Feedback,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct GeoLocation {
     pub lat: f64,
     pub lon: f64,
@@ -93,7 +94,7 @@ pub struct GeoLocation {
 // ─── Activation Destinations ────────────────────────────────────────────────
 
 /// Output channels for delivering personalized offers/messages.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ActivationChannel {
     PushNotification,
@@ -156,7 +157,7 @@ impl ActivationChannel {
 }
 
 /// A message/offer to be delivered to a user via an activation channel.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ActivationRequest {
     pub activation_id: String,
     /// Links this activation back to the decisioning/bid that selected it (FR-ACT-001).
@@ -180,7 +181,7 @@ pub struct ActivationRequest {
 }
 
 /// Content payload for an activation message.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ActivationContent {
     pub headline: String,
     pub body: String,
@@ -196,7 +197,7 @@ pub struct ActivationContent {
 }
 
 /// Result of an activation attempt.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ActivationResult {
     pub activation_id: String,
     pub channel: ActivationChannel,
@@ -207,7 +208,7 @@ pub struct ActivationResult {
     pub delivered_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ActivationStatus {
     Queued,
@@ -225,7 +226,7 @@ pub enum ActivationStatus {
 // ─── SendGrid Email Analytics ──────────────────────────────────────────────
 
 /// SendGrid webhook event types for email delivery analytics.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum EmailEventType {
     Processed,
@@ -242,7 +243,7 @@ pub enum EmailEventType {
 }
 
 /// A SendGrid webhook event for email delivery analytics.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct EmailWebhookEvent {
     pub email: String,
     pub event: EmailEventType,
@@ -255,7 +256,7 @@ pub struct EmailWebhookEvent {
 }
 
 /// Aggregated email analytics for a campaign or activation.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
 pub struct EmailAnalytics {
     pub activation_id: String,
     pub total_sent: u64,

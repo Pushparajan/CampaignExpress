@@ -8,12 +8,13 @@
 
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 // ─── Tier System ────────────────────────────────────────────────────────────
 
 /// Loyalty tier levels with escalating benefits.
 #[derive(
-    Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+    Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, ToSchema,
 )]
 #[serde(rename_all = "snake_case")]
 pub enum LoyaltyTier {
@@ -204,7 +205,7 @@ use chrono::Datelike;
 // ─── Earning & Redemption ───────────────────────────────────────────────────
 
 /// Channel-specific earning bonus.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct EarningBonus {
     pub channel: LoyaltyChannel,
     /// Extra multiplier (e.g. 1.2 = 20% bonus).
@@ -213,7 +214,7 @@ pub struct EarningBonus {
 }
 
 /// Promotional multiplier (Double Star Days, etc.).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct PromotionMultiplier {
     pub promotion_id: String,
     pub name: String,
@@ -223,7 +224,7 @@ pub struct PromotionMultiplier {
 }
 
 /// Channels where loyalty interactions happen.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum LoyaltyChannel {
     InStore,
@@ -233,7 +234,7 @@ pub enum LoyaltyChannel {
 }
 
 /// Request to earn Stars from a purchase or activity.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct EarnStarsRequest {
     pub user_id: String,
     pub amount_cents: u64,
@@ -246,7 +247,7 @@ pub struct EarnStarsRequest {
 }
 
 /// Result of earning Stars.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct EarnStarsResponse {
     pub user_id: String,
     pub stars_earned: u32,
@@ -258,7 +259,7 @@ pub struct EarnStarsResponse {
 }
 
 /// Redemption tiers — scaled reward catalog.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum RedemptionTier {
     /// 25 Stars — drink customization.
@@ -314,7 +315,7 @@ impl RedemptionTier {
 }
 
 /// Request to redeem Stars.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct RedeemRequest {
     pub user_id: String,
     pub redemption_tier: RedemptionTier,
@@ -322,7 +323,7 @@ pub struct RedeemRequest {
 }
 
 /// Result of a redemption.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct RedeemResponse {
     pub user_id: String,
     pub success: bool,
@@ -386,7 +387,7 @@ pub enum LoyaltyEventType {
 }
 
 /// RL reward signal for SNN training feedback loop.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct LoyaltyRewardSignal {
     pub offer_id: String,
     pub user_id: String,
@@ -396,7 +397,7 @@ pub struct LoyaltyRewardSignal {
     pub timestamp: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum LoyaltySignalType {
     /// User clicked the loyalty offer → +1.0 reward.

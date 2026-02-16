@@ -7,6 +7,7 @@ use campaign_core::dsp::*;
 use campaign_dsp::DspRouter;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use utoipa::ToSchema;
 
 /// Shared state for DSP endpoints.
 #[derive(Clone)]
@@ -15,6 +16,15 @@ pub struct DspState {
 }
 
 /// POST /v1/dsp/bid — Route a bid request to DSPs.
+#[utoipa::path(
+    post,
+    path = "/v1/dsp/bid",
+    tag = "DSP",
+    request_body = DspBidApiRequest,
+    responses(
+        (status = 200, description = "DSP bid responses", body = DspBidApiResponse),
+    )
+)]
 pub async fn handle_dsp_bid(
     State(state): State<DspState>,
     Json(request): Json<DspBidApiRequest>,
@@ -36,6 +46,15 @@ pub async fn handle_dsp_bid(
 }
 
 /// POST /v1/dsp/win — Record a win notification.
+#[utoipa::path(
+    post,
+    path = "/v1/dsp/win",
+    tag = "DSP",
+    request_body = DspWinRequest,
+    responses(
+        (status = 200, description = "Win recorded"),
+    )
+)]
 pub async fn handle_dsp_win(
     State(state): State<DspState>,
     Json(request): Json<DspWinRequest>,
@@ -50,20 +69,28 @@ pub async fn handle_dsp_win(
 }
 
 /// GET /v1/dsp/status — Get DSP routing status.
+#[utoipa::path(
+    get,
+    path = "/v1/dsp/status",
+    tag = "DSP",
+    responses(
+        (status = 200, description = "DSP routing status", body = DspStatusResponse),
+    )
+)]
 pub async fn handle_dsp_status(State(state): State<DspState>) -> Json<DspStatusResponse> {
     Json(DspStatusResponse {
         active_dsps: state.router.active_dsp_count(),
     })
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct DspBidApiRequest {
     pub request_id: String,
     pub openrtb_json: String,
     pub impression_ids: Vec<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct DspBidApiResponse {
     pub request_id: String,
     pub dsp_responses: usize,
@@ -71,13 +98,13 @@ pub struct DspBidApiResponse {
     pub responses: Vec<DspBidResponse>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct DspWinRequest {
     pub platform: DspPlatform,
     pub win_price: f64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct DspStatusResponse {
     pub active_dsps: usize,
 }
