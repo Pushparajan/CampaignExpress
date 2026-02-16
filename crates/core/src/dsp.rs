@@ -12,9 +12,10 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// Supported DSP platforms.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DspPlatform {
     GoogleDv360,
@@ -94,7 +95,7 @@ pub struct DspBidRequest {
 }
 
 /// A bid response received from a DSP.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DspBidResponse {
     pub request_id: String,
     pub platform: DspPlatform,
@@ -105,7 +106,7 @@ pub struct DspBidResponse {
 }
 
 /// Individual bid from a DSP.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DspBid {
     pub bid_id: String,
     pub impression_id: String,

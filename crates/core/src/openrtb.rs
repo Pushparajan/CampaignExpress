@@ -2,9 +2,10 @@
 //! Subset of fields relevant to Campaign Express ad personalization.
 
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// OpenRTB Bid Request (simplified).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct BidRequest {
     pub id: String,
     pub imp: Vec<Impression>,
@@ -26,7 +27,7 @@ pub struct BidRequest {
     pub ext: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Impression {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -45,7 +46,7 @@ fn default_bidfloorcur() -> String {
     "USD".to_string()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Banner {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub w: Option<u32>,
@@ -55,7 +56,7 @@ pub struct Banner {
     pub pos: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Video {
     #[serde(default)]
     pub mimes: Vec<String>,
@@ -67,7 +68,7 @@ pub struct Video {
     pub protocols: Vec<u32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Site {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -79,7 +80,7 @@ pub struct Site {
     pub page: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct App {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -89,7 +90,7 @@ pub struct App {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Device {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ua: Option<String>,
@@ -107,7 +108,7 @@ pub struct Device {
     pub ifa: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Geo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lat: Option<f64>,
@@ -121,7 +122,7 @@ pub struct Geo {
     pub city: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct User {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -136,7 +137,7 @@ pub struct User {
 }
 
 /// OpenRTB Bid Response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct BidResponse {
     pub id: String,
     #[serde(default)]
@@ -153,7 +154,7 @@ fn default_cur() -> String {
     "USD".to_string()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct SeatBid {
     pub bid: Vec<Bid>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -162,7 +163,7 @@ pub struct SeatBid {
     pub group: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Bid {
     pub id: String,
     pub impid: String,

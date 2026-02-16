@@ -10,6 +10,7 @@ use serde::Serialize;
 use std::sync::Arc;
 use std::time::Instant;
 use tracing::{error, warn};
+use utoipa::ToSchema;
 
 /// Maximum number of impressions per bid request.
 const MAX_IMPRESSIONS: usize = 100;
@@ -54,6 +55,17 @@ fn validate_bid_request(request: &BidRequest) -> Result<(), &'static str> {
 }
 
 /// POST /v1/bid — OpenRTB bid request endpoint.
+#[utoipa::path(
+    post,
+    path = "/v1/bid",
+    tag = "Bidding",
+    request_body = BidRequest,
+    responses(
+        (status = 200, description = "Bid response with seat bids", body = BidResponse),
+        (status = 400, description = "Invalid bid request", body = ErrorResponse),
+        (status = 500, description = "Internal processing error", body = ErrorResponse),
+    )
+)]
 pub async fn handle_bid(
     State(state): State<AppState>,
     Json(request): Json<BidRequest>,
@@ -90,6 +102,14 @@ pub async fn handle_bid(
 }
 
 /// GET /health — Health check endpoint.
+#[utoipa::path(
+    get,
+    path = "/health",
+    tag = "Operations",
+    responses(
+        (status = 200, description = "Service is healthy", body = HealthResponse),
+    )
+)]
 pub async fn health_check(State(state): State<AppState>) -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "healthy".to_string(),
@@ -100,6 +120,15 @@ pub async fn health_check(State(state): State<AppState>) -> Json<HealthResponse>
 
 /// GET /ready — Readiness probe for Kubernetes.
 /// Returns 200 only when the service is ready to accept traffic.
+#[utoipa::path(
+    get,
+    path = "/ready",
+    tag = "Operations",
+    responses(
+        (status = 200, description = "Service is ready"),
+        (status = 503, description = "Service is not ready"),
+    )
+)]
 pub async fn readiness(State(state): State<AppState>) -> StatusCode {
     // Verify the processor is initialized and the node has been running
     if state.start_time.elapsed().as_secs() > 0 {
@@ -110,6 +139,14 @@ pub async fn readiness(State(state): State<AppState>) -> StatusCode {
 }
 
 /// GET /live — Liveness probe for Kubernetes.
+#[utoipa::path(
+    get,
+    path = "/live",
+    tag = "Operations",
+    responses(
+        (status = 200, description = "Service is alive"),
+    )
+)]
 pub async fn liveness() -> StatusCode {
     StatusCode::OK
 }
@@ -117,13 +154,13 @@ pub async fn liveness() -> StatusCode {
 /// GET /metrics — Prometheus metrics endpoint (handled by metrics-exporter-prometheus).
 /// This is a placeholder; the actual metrics endpoint is mounted separately.
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ErrorResponse {
     pub error: String,
     pub message: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct HealthResponse {
     pub status: String,
     pub node_id: String,
