@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS campaign_express.bid_events
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
 ORDER BY (timestamp, request_id, event_type)
-TTL timestamp + INTERVAL 90 DAY
+TTL toDateTime(timestamp) + INTERVAL 90 DAY
 SETTINGS index_granularity = 8192;
 
 -- ── Campaign Analytics Aggregates ───────────────────────────────────────────
